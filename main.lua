@@ -1532,45 +1532,21 @@ task.spawn(function()
     end
 end)
 
--- Auto Collect logic mejorado
-local collectNames = {"Coin", "Cash", "Money", "Drop", "Gem", "Crystal", "Orb", "Star", "Token"}
-
+-- Auto Click logic mejorado
 task.spawn(function()
     while true do
-        task.wait(0.2)
-        if states.AutoCollect then
-            hum, root = getHumanoid()
-            if root then
-                for _, obj in ipairs(workspace:GetDescendants()) do
-                    if obj:IsA("BasePart") then
-                        local isCollectable = false
-                        for _, name in ipairs(collectNames) do
-                            if string.find(obj.Name:lower(), name:lower()) then
-                                isCollectable = true
-                                break
-                            end
-                        end
-                        
-                        if isCollectable then
-                            local dist = (obj.Position - root.Position).Magnitude
-                            if dist <= config.collectRange then
-                                pcall(function()
-                                    if firetouchinterest then
-                                        firetouchinterest(root, obj, 0)
-                                        task.wait()
-                                        firetouchinterest(root, obj, 1)
-                                    else
-                                        obj.CFrame = root.CFrame
-                                    end
-                                end)
-                            end
-                        end
-                    end
-                end
-            end
+        task.wait(config.autoClickDelay)
+        if states.AutoClick then
+            pcall(function()
+                VIM:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                task.wait(0.01)
+                VIM:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+            end)
         end
     end
 end)
+
+-- Auto Collect logic mejorado (removido - no se usa)
 
 -- Anti AFK
 task.spawn(function()
@@ -1582,6 +1558,17 @@ task.spawn(function()
                 task.wait(0.1)
                 VIM:SendKeyEvent(false, Enum.KeyCode.W, false, game)
             end)
+        end
+    end
+end)
+
+-- Click TP
+mouse.Button1Down:Connect(function()
+    if states.ClickTP and UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
+        hum, root = getHumanoid()
+        if root and mouse.Target then
+            root.CFrame = CFrame.new(mouse.Hit.Position + Vector3.new(0, 3, 0))
+            createNotification("Click TP", "Teleportado", 1)
         end
     end
 end)
