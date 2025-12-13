@@ -1,11 +1,11 @@
 --[[
- 🐉 DRAGON RED ADMIN PANEL v3 🐉
- Negro | Bordes rojos animados
- Toggles ON/OFF | Sliders | Aura Kill | ESP
-
- NOTA:
- - Script pensado para entornos con loadstring / HttpGet
- - Uso educativo
+    🐉 DRAGON RED ADMIN PANEL v3 (Optimizado) 🐉
+    Mejoras:
+    - Código modular y ordenado
+    - Limpieza de objetos al desactivar funciones
+    - Mejor manejo de estados
+    - GUI más consistente
+    - ESP optimizado
 ]]
 
 -- Servicios
@@ -29,6 +29,7 @@ local states = {
     ESP = false
 }
 
+-- Variables
 local flySpeed = 60
 local walkSpeed = 16
 local auraRange = 12
@@ -51,9 +52,12 @@ Instance.new("UICorner", frame).CornerRadius = UDim.new(0,14)
 local stroke = Instance.new("UIStroke", frame)
 stroke.Color = Color3.fromRGB(200,0,0)
 stroke.Thickness = 2
-TweenService:Create(stroke, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-    Color = Color3.fromRGB(255,60,60)
-}):Play()
+
+TweenService:Create(
+    stroke,
+    TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    { Color = Color3.fromRGB(255,60,60) }
+):Play()
 
 frame.Position = UDim2.new(-0.4,0,0.5,-260)
 frame:TweenPosition(UDim2.new(0.05,0,0.5,-260),"Out","Back",0.7,true)
@@ -68,7 +72,7 @@ title.TextColor3 = Color3.fromRGB(220,0,0)
 title.Font = Enum.Font.GothamBlack
 title.TextSize = 24
 
--- Cerrar
+-- Botón cerrar
 local close = Instance.new("TextButton", frame)
 close.Size = UDim2.new(0,30,0,30)
 close.Position = UDim2.new(1,-35,0,5)
@@ -90,8 +94,10 @@ local function toggleButton(text, y)
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 15
     btn.Text = text .. ": OFF"
+
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
     Instance.new("UIStroke", btn).Color = Color3.fromRGB(180,0,0)
+
     return btn
 end
 
@@ -116,16 +122,20 @@ local function slider(text, y, min, max, default, callback)
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1,0)
 
     local dragging = false
+
     bar.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
     end)
+
     UIS.InputEnded:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
+
     UIS.InputChanged:Connect(function(i)
         if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-            local p = math.clamp((i.Position.X-bar.AbsolutePosition.X)/bar.AbsoluteSize.X,0,1)
+            local p = math.clamp((i.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
             fill.Size = UDim2.new(p,0,1,0)
+
             local val = math.floor(min + (max-min)*p)
             lbl.Text = text .. ": " .. val
             callback(val)
@@ -155,19 +165,23 @@ slider("Aura Range", 435, 5, 40, 12, function(v)
 end)
 
 -- Funciones
-flyBtn.MouseButton1Click:Connect(function()
+local function toggleFly()
     states.Fly = not states.Fly
     flyBtn.Text = "Fly: " .. (states.Fly and "ON" or "OFF")
+
     if states.Fly then
         bv = Instance.new("BodyVelocity", root)
         bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+
         bg = Instance.new("BodyGyro", root)
         bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
     else
-        if bv then bv:Destroy() end
-        if bg then bg:Destroy() end
+        if bv then bv:Destroy() bv = nil end
+        if bg then bg:Destroy() bg = nil end
     end
-end)
+end
+
+flyBtn.MouseButton1Click:Connect(toggleFly)
 
 RunService.RenderStepped:Connect(function()
     if states.Fly and bv then
@@ -202,19 +216,25 @@ end)
 godBtn.MouseButton1Click:Connect(function()
     states.God = not states.God
     godBtn.Text = "God Mode: " .. (states.God and "ON" or "OFF")
-    if states.God then hum.MaxHealth = math.huge hum.Health = hum.MaxHealth else hum.MaxHealth = 100 end
+
+    if states.God then
+        hum.MaxHealth = math.huge
+        hum.Health = hum.MaxHealth
+    else
+        hum.MaxHealth = 100
+    end
 end)
 
 -- Aura Kill
 RunService.Heartbeat:Connect(function()
-    if states.AuraKill then
-        for _,plr in pairs(Players:GetPlayers()) do
-            if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                local dist = (plr.Character.HumanoidRootPart.Position - root.Position).Magnitude
-                if dist <= auraRange then
-                    local h = plr.Character:FindFirstChild("Humanoid")
-                    if h then h.Health = 0 end
-                end
+    if not states.AuraKill then return end
+
+    for _,plr in pairs(Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            local dist = (plr.Character.HumanoidRootPart.Position - root.Position).Magnitude
+            if dist <= auraRange then
+                local h = plr.Character:FindFirstChild("Humanoid")
+                if h then h.Health = 0 end
             end
         end
     end
@@ -227,11 +247,12 @@ end)
 
 -- ESP
 local function clearESP()
-    for _,v in pairs(espFolder:GetChildren()) do v:Destroy() end
+    espFolder:ClearAllChildren()
 end
 
 local function createESP(plr)
     if not plr.Character or not plr.Character:FindFirstChild("Head") then return end
+
     local bb = Instance.new("BillboardGui", espFolder)
     bb.Adornee = plr.Character.Head
     bb.Size = UDim2.new(0,100,0,40)
@@ -250,7 +271,9 @@ end
 espBtn.MouseButton1Click:Connect(function()
     states.ESP = not states.ESP
     espBtn.Text = "ESP: " .. (states.ESP and "ON" or "OFF")
+
     clearESP()
+
     if states.ESP then
         for _,plr in pairs(Players:GetPlayers()) do
             if plr ~= player then createESP(plr) end
