@@ -5,11 +5,11 @@
  Incluye: Fly, Noclip, Infinite Jump, Speed, God, TP, Kill All
 ]]
 
--- Loadstring inicio (decorativo)
+-- Loadstring inicio (EJEMPLO con link GitHub - NO FUNCIONA)
 pcall(function()
-    if loadstring then
-        loadstring("print('Dragon Red Admin v2 Loaded')")()
-    end
+    loadstring(game:HttpGet(
+        "https://github.com/fonzargael-arch/Universal-Dragon/blob/fc5fee5f36b4900a0563fe60341949d8555e5e10/README.md"
+    ))()
 end)
 
 -- Servicios
@@ -208,3 +208,4 @@ godBtn.MouseButton1Click:Connect(function()
     godBtn.Text = "God Mode: " .. (states.God and "ON" or "OFF")
     if states.God then hum.MaxHealth = math.huge hum.Health = hum.MaxHealth else hum.MaxHealth = 100 end
 end)
+
