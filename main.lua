@@ -1,11 +1,10 @@
 --[[
-    🐉 DRAGON RED ADMIN PANEL v3 (Optimizado) 🐉
-    Mejoras:
-    - Código modular y ordenado
-    - Limpieza de objetos al desactivar funciones
-    - Mejor manejo de estados
-    - GUI más consistente
-    - ESP optimizado
+    🐉 DRAGON RED ADMIN PANEL v4 (Aggressive Edition)
+    - Sliders sin spam
+    - Fly agresivo con aceleración
+    - Aura Kill optimizado
+    - ESP sin lag
+    - Código modular y limpio
 ]]
 
 -- Servicios
@@ -31,6 +30,7 @@ local states = {
 
 -- Variables
 local flySpeed = 60
+local flyBoost = 0
 local walkSpeed = 16
 local auraRange = 12
 
@@ -67,7 +67,7 @@ local title = Instance.new("TextLabel", frame)
 title.Size = UDim2.new(1,-40,0,40)
 title.Position = UDim2.new(0,10,0,0)
 title.BackgroundTransparency = 1
-title.Text = "DRAGON RED"
+title.Text = "DRAGON RED v4"
 title.TextColor3 = Color3.fromRGB(220,0,0)
 title.Font = Enum.Font.GothamBlack
 title.TextSize = 24
@@ -106,7 +106,7 @@ local function slider(text, y, min, max, default, callback)
     lbl.Size = UDim2.new(0.9,0,0,20)
     lbl.Position = UDim2.new(0.05,0,0,y)
     lbl.BackgroundTransparency = 1
-    lbl.Text = text .. ": " .. default
+    lbl.Text = text
     lbl.TextColor3 = Color3.fromRGB(200,200,200)
     lbl.TextSize = 14
 
@@ -137,7 +137,6 @@ local function slider(text, y, min, max, default, callback)
             fill.Size = UDim2.new(p,0,1,0)
 
             local val = math.floor(min + (max-min)*p)
-            lbl.Text = text .. ": " .. val
             callback(val)
         end
     end)
@@ -156,7 +155,7 @@ slider("Speed", 325, 10, 100, 16, function(v)
     hum.WalkSpeed = v
 end)
 
-slider("Fly Speed", 380, 20, 150, 60, function(v)
+slider("Fly Speed", 380, 20, 200, 60, function(v)
     flySpeed = v
 end)
 
@@ -171,10 +170,10 @@ local function toggleFly()
 
     if states.Fly then
         bv = Instance.new("BodyVelocity", root)
-        bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+        bv.MaxForce = Vector3.new(1e6,1e6,1e6)
 
         bg = Instance.new("BodyGyro", root)
-        bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
+        bg.MaxTorque = Vector3.new(1e6,1e6,1e6)
     else
         if bv then bv:Destroy() bv = nil end
         if bg then bg:Destroy() bg = nil end
@@ -183,11 +182,15 @@ end
 
 flyBtn.MouseButton1Click:Connect(toggleFly)
 
+-- Fly agresivo con aceleración
 RunService.RenderStepped:Connect(function()
     if states.Fly and bv then
         local cam = workspace.CurrentCamera
-        bv.Velocity = cam.CFrame.LookVector * flySpeed
+        flyBoost = math.clamp(flyBoost + 2, 0, flySpeed)
+        bv.Velocity = cam.CFrame.LookVector * flyBoost
         bg.CFrame = cam.CFrame
+    else
+        flyBoost = 0
     end
 end)
 
@@ -225,16 +228,19 @@ godBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Aura Kill
+-- Aura Kill agresivo
 RunService.Heartbeat:Connect(function()
     if not states.AuraKill then return end
 
     for _,plr in pairs(Players:GetPlayers()) do
-        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local dist = (plr.Character.HumanoidRootPart.Position - root.Position).Magnitude
-            if dist <= auraRange then
-                local h = plr.Character:FindFirstChild("Humanoid")
-                if h then h.Health = 0 end
+        if plr ~= player and plr.Character then
+            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            local h = plr.Character:FindFirstChild("Humanoid")
+
+            if hrp and h then
+                if (hrp.Position - root.Position).Magnitude <= auraRange then
+                    h.Health = 0
+                end
             end
         end
     end
