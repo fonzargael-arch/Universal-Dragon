@@ -8,7 +8,7 @@
 -- Loadstring inicio (EJEMPLO con link GitHub - NO FUNCIONA)
 pcall(function()
     loadstring(game:HttpGet(
-        "https://github.com/fonzargael-arch/Universal-Dragon/blob/fc5fee5f36b4900a0563fe60341949d8555e5e10/README.md"
+        "https://raw.githubusercontent.com/fonzargael-arch/Universal-Dragon/fc5fee5f36b4900a0563fe60341949d8555e5e10/README.md"
     ))()
 end)
 
