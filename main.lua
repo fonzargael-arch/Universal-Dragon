@@ -5,6 +5,8 @@
     🎯 Enfocado en ayudar al jugador
     ⚡ Optimizado y sin lag
     🎨 Diseño moderno y profesional
+    
+    Created by: Krxtopher
 ]]
 
 --// Servicios (optimizado)
@@ -37,6 +39,14 @@ player.CharacterAdded:Connect(function(c)
     char = c
     task.wait(0.1)
     hum, root = getHumanoid()
+    
+    -- Reaplicar velocidades si están activas
+    if states.WalkSpeed and hum then
+        hum.WalkSpeed = config.walkSpeed
+    end
+    if states.JumpPower and hum then
+        hum.JumpPower = config.jumpPower
+    end
 end)
 
 --// Estados
@@ -127,50 +137,6 @@ local function notify(title, text, duration)
         gui:Destroy()
     end)
 end
-
---// Splash screen (optimizado)
-task.spawn(function()
-    local splash = Instance.new("ScreenGui")
-    splash.Name = "DragonSplash"
-    splash.ResetOnSpawn = false
-    splash.Parent = player.PlayerGui
-    
-    local bg = Instance.new("Frame", splash)
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
-    bg.BorderSizePixel = 0
-    
-    local logo = Instance.new("TextLabel", bg)
-    logo.Size = UDim2.new(0, 300, 0, 100)
-    logo.Position = UDim2.new(0.5, -150, 0.5, -70)
-    logo.BackgroundTransparency = 1
-    logo.Text = "🐉"
-    logo.TextSize = 80
-    logo.TextColor3 = Color3.fromRGB(200, 0, 0)
-    
-    local title = Instance.new("TextLabel", bg)
-    title.Size = UDim2.new(0, 300, 0, 40)
-    title.Position = UDim2.new(0.5, -150, 0.5, 20)
-    title.BackgroundTransparency = 1
-    title.Text = "DRAGON RED v7"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Font = Enum.Font.Code
-    title.TextSize = 28
-    
-    local subtitle = Instance.new("TextLabel", bg)
-    subtitle.Size = UDim2.new(0, 300, 0, 25)
-    subtitle.Position = UDim2.new(0.5, -150, 0.5, 60)
-    subtitle.BackgroundTransparency = 1
-    subtitle.Text = "Universal Edition"
-    subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
-    subtitle.Font = Enum.Font.Code
-    subtitle.TextSize = 16
-    
-    task.wait(1.5)
-    bg:TweenPosition(UDim2.new(0, 0, -1, 0), "In", "Quad", 0.5, true)
-    task.wait(0.6)
-    splash:Destroy()
-end)
 
 --// GUI Principal
 local gui = Instance.new("ScreenGui")
