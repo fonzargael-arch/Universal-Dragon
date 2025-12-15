@@ -19,7 +19,7 @@ local dragging = false
 end
 
 --// ═════════════════════════════════════════════
---// MOVEMENT TA
+--// MOVEMENT TAB
 --// ═════════════════════════════════════════════
 local movePage = tabs["Movement"].page
 
@@ -746,7 +746,57 @@ end)
 createSection(settingsPage, "ℹ️ Info")
 
 local infoBox = Instance.new("Frame", settingsPage)
-infoBox.Size = UDim2.new(--[[
+infoBox.Size = UDim2.new(1, 0, 0, 200)
+infoBox.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+infoBox.BorderSizePixel = 0
+infoBox.ZIndex = 999999
+
+Instance.new("UICorner", infoBox).CornerRadius = UDim.new(0, 8)
+local infoStroke = Instance.new("UIStroke", infoBox)
+infoStroke.Color = Color3.fromRGB(200, 0, 0)
+infoStroke.Thickness = 1
+
+local infoLabel = Instance.new("TextLabel", infoBox)
+infoLabel.Size = UDim2.new(1, -16, 1, -16)
+infoLabel.Position = UDim2.new(0, 8, 0, 8)
+infoLabel.BackgroundTransparency = 1
+infoLabel.Text = [[🐉 DRAGON RED v7 - Universal Edition
+
+✨ Características:
+• Fly Mode con velocidad ajustable
+• Noclip para atravesar paredes
+• Infinite Jump
+• ESP personalizable con distancia
+• Click TP (Ctrl + Click)
+• FPS Counter
+• Control de velocidad/salto
+• Sistema de jugadores completo
+• Hitbox Expander
+• Kill All / Kill Selected
+
+⌨️ Atajos:
+• RightShift - Toggle GUI
+• Ctrl + Click - Teleport
+
+🎯 Script universal optimizado
+Sin lag • Anti-kick • Ligero
+
+Created by: Krxtopher]]
+infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+infoLabel.Font = Enum.Font.Code
+infoLabel.TextSize = 11
+infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.TextYAlignment = Enum.TextXAlignment.Top
+infoLabel.TextWrapped = true
+infoLabel.ZIndex = 999999
+
+--// Carga completa
+notify("🐉 Dragon Red v7", "Loaded by Krxtopher • RightShift to toggle", 3)
+print("═══════════════════════════════════")
+print("🐉 DRAGON RED v7 - Universal Edition")
+print("✅ Created by: Krxtopher")
+print("⌨️ Press RightShift to toggle")
+print("═══════════════════════════════════")--[[
     🐉 DRAGON RED ADMIN PANEL v7 - ULTIMATE EDITION
     ═══════════════════════════════════════════════
     ✨ Script universal para todos los juegos
@@ -2739,9 +2789,7 @@ infoLabel.TextYAlignment = Enum.TextXAlignment.Top
 infoLabel.TextWrapped = true
 
 --// Carga completa
-notify("🐉 Dragon Red v7", "Loaded by Krxtopher • RightShift to toggle", 3)
+notify("🐉 Dragon Red v7", "Loaded by Gael Fonzar • RightShift to toggle", 3)
 print("═══════════════════════════════════")
 print("🐉 DRAGON RED v7 - Universal Edition")
-print("✅ Created by: Krxtopher")
-print("⌨️ Press RightShift to toggle")
-print("═══════════════════════════════════")
+print("✅ Created by: GF Hub")
