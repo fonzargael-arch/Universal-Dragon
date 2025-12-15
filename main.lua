@@ -1,15 +1,14 @@
-
 --[[
     ═══════════════════════════════════════
     🎮 GF HUB - Universal Script
     ═══════════════════════════════════════
     Created by: Gael Fonzar
-    Version: 3.0 - Fluent UI
-    Modern design & Auto WalkFling
+    Version: 3.0 - Real WalkFling
+    Based on MM2 & Natural Disasters fling
     ═══════════════════════════════════════
 ]]
 
--- Load Fluent Library (Modern UI)
+-- Load Fluent Library
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
@@ -41,10 +40,10 @@ local connections = {}
 local hitboxCache = {}
 
 -- WalkFling Variables
-local walkFlingEnabled = false
-local flingPower = 500
-local flingHeight = 300
-local bambiEnabled = false
+local flingEnabled = false
+local flingTarget = nil
+local pushPower = 5000
+local spinPower = 500
 
 -- Helper Functions
 local function getChar()
@@ -224,161 +223,183 @@ local function getPlayerByName(name)
     return nil
 end
 
--- BAMBI SETUP (Para WalkFling extremo)
+-- REAL WALKFLING SYSTEM (Basado en MM2/Natural Disasters)
+local bambiConnection = nil
+local flingConnection = nil
+
 local function setupBambi()
     local char = getChar()
     if not char then return end
     
-    -- Hacer invisible y sin colisiones
+    local root = getRoot()
+    if not root then return end
+    
+    -- Desactivar completamente las colisiones
     for _, part in pairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = false
             part.Massless = true
-            if part.Name ~= "HumanoidRootPart" then
-                part.Transparency = 1
-            end
-        elseif part:IsA("Decal") or part:IsA("Texture") then
-            part.Transparency = 1
         end
     end
     
-    -- Configurar HumanoidRootPart para fling extremo
-    local root = getRoot()
-    if root then
-        root.Transparency = 1
-        root.Size = Vector3.new(2, 2, 2)
-        root.CanCollide = false
-        root.Massless = true
+    -- Hacer invisible
+    for _, part in pairs(char:GetChildren()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Transparency = 1
+            for _, child in pairs(part:GetChildren()) do
+                if child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceAppearance") then
+                    child.Transparency = 1
+                end
+            end
+        elseif part:IsA("Accessory") then
+            local handle = part:FindFirstChild("Handle")
+            if handle then
+                handle.Transparency = 1
+            end
+        end
     end
+    
+    root.Transparency = 1
+    
+    -- Hacer el root más grande para mejor fling
+    root.Size = Vector3.new(4, 4, 4)
+    root.CanCollide = false
 end
 
 local function resetBambi()
     local char = getChar()
     if not char then return end
     
+    local root = getRoot()
+    if not root then return end
+    
+    -- Restaurar colisiones
     for _, part in pairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
             part.CanCollide = true
             part.Massless = false
-            if part.Name ~= "HumanoidRootPart" then
-                part.Transparency = 0
-            end
-        elseif part:IsA("Decal") or part:IsA("Texture") then
-            part.Transparency = 0
         end
+    end
+    
+    -- Restaurar visibilidad
+    for _, part in pairs(char:GetChildren()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            part.Transparency = 0
+            for _, child in pairs(part:GetChildren()) do
+                if child:IsA("Decal") or child:IsA("Texture") or child:IsA("SurfaceAppearance") then
+                    child.Transparency = 0
+                end
+            end
+        elseif part:IsA("Accessory") then
+            local handle = part:FindFirstChild("Handle")
+            if handle then
+                handle.Transparency = 0
+            end
+        end
+    end
+    
+    -- Restaurar root
+    root.Transparency = 1
+    root.Size = Vector3.new(2, 2, 1)
+    root.CanCollide = false
+end
+
+-- Sistema de Fling Real
+local function startFling(target)
+    if not target or not target.Character then return end
+    
+    flingTarget = target
+    flingEnabled = true
+    
+    local myRoot = getRoot()
+    local myChar = getChar()
+    
+    if not myRoot or not myChar then return end
+    
+    -- Setup bambi
+    setupBambi()
+    
+    -- Crear BodyThrust para empuje constante
+    local bodyThrust = Instance.new("BodyThrust")
+    bodyThrust.Name = "GF_FlingThrust"
+    bodyThrust.Force = Vector3.new(0, 0, 0)
+    bodyThrust.Location = Vector3.new(0, 0, 0)
+    bodyThrust.Parent = myRoot
+    
+    -- Crear BodyGyro para control de rotación
+    local bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.Name = "GF_FlingGyro"
+    bodyGyro.MaxTorque = Vector3.new(9e9, 0, 9e9)
+    bodyGyro.P = 10000
+    bodyGyro.Parent = myRoot
+    
+    Fluent:Notify({
+        Title = "🌪️ WalkFling Activated",
+        Content = "Walk into " .. target.Name .. " to fling them!",
+        Duration = 3
+    })
+    
+    -- Loop de fling
+    flingConnection = RunService.Heartbeat:Connect(function()
+        if not flingEnabled or not flingTarget or not flingTarget.Character then
+            if flingConnection then
+                flingConnection:Disconnect()
+            end
+            return
+        end
+        
+        local targetRoot = flingTarget.Character:FindFirstChild("HumanoidRootPart")
+        if not targetRoot then return end
+        
+        local myCurrentRoot = getRoot()
+        if not myCurrentRoot then return end
+        
+        local distance = (myCurrentRoot.Position - targetRoot.Position).Magnitude
+        
+        -- Si estás cerca del objetivo
+        if distance < 10 then
+            -- Rotar rápido para causar fling
+            myCurrentRoot.RotVelocity = Vector3.new(0, spinPower, 0)
+            
+            -- Empujar hacia el objetivo
+            local direction = (targetRoot.Position - myCurrentRoot.Position).Unit
+            myCurrentRoot.Velocity = direction * 50
+            
+            -- Aplicar fuerza de empuje
+            if bodyThrust then
+                bodyThrust.Force = direction * pushPower
+                bodyThrust.Location = targetRoot.Position
+            end
+        end
+    end)
+end
+
+local function stopFling()
+    flingEnabled = false
+    flingTarget = nil
+    
+    if flingConnection then
+        flingConnection:Disconnect()
+        flingConnection = nil
     end
     
     local root = getRoot()
     if root then
-        root.Transparency = 1
-        root.Size = Vector3.new(2, 2, 1)
-        root.CanCollide = false
-    end
-end
-
--- EXTREME FLING con Teleport + WalkFling
-local function extremeFling(target)
-    if not target or not target.Character then
-        Fluent:Notify({
-            Title = "❌ Error",
-            Content = "No player selected!",
-            Duration = 3
-        })
-        return
+        local thrust = root:FindFirstChild("GF_FlingThrust")
+        if thrust then thrust:Destroy() end
+        
+        local gyro = root:FindFirstChild("GF_FlingGyro")
+        if gyro then gyro:Destroy() end
+        
+        root.RotVelocity = Vector3.new(0, 0, 0)
+        root.Velocity = Vector3.new(0, 0, 0)
     end
     
-    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-    local myRoot = getRoot()
-    local myChar = getChar()
-    
-    if not targetRoot or not myRoot or not myChar then
-        Fluent:Notify({
-            Title = "❌ Error",
-            Content = "Character not found!",
-            Duration = 3
-        })
-        return
-    end
+    resetBambi()
     
     Fluent:Notify({
-        Title = "🌪️ Flinging",
-        Content = "Launching " .. target.Name .. " to space!",
-        Duration = 2
-    })
-    
-    local originalPos = myRoot.CFrame
-    local originalTargetCF = targetRoot.CFrame
-    
-    -- Setup Bambi (tu personaje sin colisiones)
-    setupBambi()
-    
-    -- Desactivar colisiones del objetivo también
-    for _, part in pairs(target.Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
-        end
-    end
-    
-    -- Anclar tu HumanoidRootPart para que NO te muevas
-    myRoot.Anchored = true
-    
-    -- Teleport TU personaje debajo del objetivo
-    myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, -3, 0)
-    
-    task.wait(0.15)
-    
-    -- Crear BodyVelocity en el OBJETIVO (no en ti)
-    local bv = Instance.new("BodyVelocity")
-    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    bv.Velocity = Vector3.new(
-        math.random(-flingPower, flingPower), 
-        flingHeight, 
-        math.random(-flingPower, flingPower)
-    )
-    bv.Parent = targetRoot
-    
-    -- Aplicar fuerza de rotación para más caos
-    local bg = Instance.new("BodyAngularVelocity")
-    bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    bg.AngularVelocity = Vector3.new(
-        math.random(-50, 50),
-        math.random(-50, 50),
-        math.random(-50, 50)
-    )
-    bg.Parent = targetRoot
-    
-    -- Mantener fuerza por 0.4 segundos
-    task.wait(0.4)
-    
-    -- Limpiar fuerzas del objetivo
-    if bv and bv.Parent then
-        bv:Destroy()
-    end
-    if bg and bg.Parent then
-        bg:Destroy()
-    end
-    
-    task.wait(0.1)
-    
-    -- Desanclar y volver a tu posición
-    myRoot.Anchored = false
-    myRoot.CFrame = originalPos
-    
-    -- Restaurar colisiones del objetivo
-    for _, part in pairs(target.Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = true
-        end
-    end
-    
-    -- Reset Bambi si está desactivado
-    if not bambiEnabled then
-        resetBambi()
-    end
-    
-    Fluent:Notify({
-        Title = "✅ Success",
-        Content = target.Name .. " has been yeeted!",
+        Title = "WalkFling Disabled",
+        Content = "",
         Duration = 2
     })
 end
@@ -410,7 +431,7 @@ local Tabs = {
 
 Tabs.Main:AddParagraph({
     Title = "Welcome to GF HUB!",
-    Content = "Version 3.0 with Fluent UI\nCreated by Gael Fonzar\n\nFeatures:\n• Extreme WalkFling System\n• Advanced ESP\n• Movement Controls\n• Combat Tools"
+    Content = "Version 3.0 with Real WalkFling\nCreated by Gael Fonzar\n\nFeatures:\n• Real WalkFling System (MM2 Style)\n• Advanced ESP\n• Movement Controls\n• Combat Tools"
 })
 
 -- ═══════════════════════════════════════
@@ -547,12 +568,12 @@ local NoclipToggle = Tabs.Movement:AddToggle("Noclip", {
 
 Tabs.Players:AddParagraph({
     Title = "Player Selection",
-    Content = "Select a player to interact with them"
+    Content = "Select a player to fling them with WalkFling"
 })
 
 local PlayerDropdown = Tabs.Players:AddDropdown("PlayerSelect", {
     Title = "Select Player",
-    Description = "Choose a player",
+    Description = "Choose a target",
     Values = getPlayerList(),
     Default = 1,
     Callback = function(Value)
@@ -580,7 +601,7 @@ Tabs.Players:AddButton({
     end
 })
 
-Tabs.Players:AddSection("Actions")
+Tabs.Players:AddSection("Teleport Actions")
 
 Tabs.Players:AddButton({
     Title = "📍 Teleport to Player",
@@ -644,61 +665,58 @@ Tabs.Players:AddButton({
     end
 })
 
-Tabs.Players:AddSection("Fling System")
+Tabs.Players:AddSection("WalkFling System")
 
-local FlingPowerSlider = Tabs.Players:AddSlider("FlingPower", {
-    Title = "Fling Power",
-    Description = "Horizontal launch power",
-    Default = 500,
-    Min = 100,
-    Max = 1000,
+Tabs.Players:AddParagraph({
+    Title = "How to use WalkFling:",
+    Content = "1. Select a player\n2. Click 'Start WalkFling'\n3. Walk into the player\n4. They will fly away!"
+})
+
+local PushPowerSlider = Tabs.Players:AddSlider("PushPower", {
+    Title = "Push Power",
+    Description = "How hard to push",
+    Default = 5000,
+    Min = 1000,
+    Max = 20000,
     Rounding = 0,
     Callback = function(Value)
-        flingPower = Value
+        pushPower = Value
     end
 })
 
-local FlingHeightSlider = Tabs.Players:AddSlider("FlingHeight", {
-    Title = "Fling Height",
-    Description = "Vertical launch power",
-    Default = 300,
+local SpinPowerSlider = Tabs.Players:AddSlider("SpinPower", {
+    Title = "Spin Power",
+    Description = "Rotation speed for fling",
+    Default = 500,
     Min = 100,
-    Max = 800,
+    Max = 2000,
     Rounding = 0,
     Callback = function(Value)
-        flingHeight = Value
+        spinPower = Value
     end
 })
 
 Tabs.Players:AddButton({
-    Title = "🌪️ FLING PLAYER",
-    Description = "Launch player to space!",
+    Title = "🌪️ Start WalkFling",
+    Description = "Activate fling mode - walk into player!",
     Callback = function()
-        extremeFling(selectedPlayer)
+        if selectedPlayer then
+            startFling(selectedPlayer)
+        else
+            Fluent:Notify({
+                Title = "❌ Error",
+                Content = "No player selected!",
+                Duration = 3
+            })
+        end
     end
 })
 
-local BambiToggle = Tabs.Players:AddToggle("BambiMode", {
-    Title = "Bambi Mode (Permanent)",
-    Description = "Stay invisible for extreme fling",
-    Default = false,
-    Callback = function(Value)
-        bambiEnabled = Value
-        if Value then
-            setupBambi()
-            Fluent:Notify({
-                Title = "👻 Bambi Mode ON",
-                Content = "You are now invisible!",
-                Duration = 2
-            })
-        else
-            resetBambi()
-            Fluent:Notify({
-                Title = "Bambi Mode OFF",
-                Content = "Visibility restored",
-                Duration = 2
-            })
-        end
+Tabs.Players:AddButton({
+    Title = "⛔ Stop WalkFling",
+    Description = "Disable fling mode",
+    Callback = function()
+        stopFling()
     end
 })
 
@@ -846,6 +864,7 @@ Tabs.Settings:AddButton({
     Title = "Unload Script",
     Description = "Remove GF HUB completely",
     Callback = function()
+        stopFling()
         Fluent:Destroy()
     end
 })
@@ -863,7 +882,7 @@ Tabs.Settings:AddSection("Credits")
 
 Tabs.Settings:AddParagraph({
     Title = "👤 Created by: Gael Fonzar",
-    Content = "Version: 3.0\nUI: Fluent Library\nStatus: ✅ Loaded"
+    Content = "Version: 3.0\nUI: Fluent Library\nFling: MM2 Style\nStatus: ✅ Loaded"
 })
 
 -- ═══════════════════════════════════════
@@ -1001,14 +1020,17 @@ player.CharacterAdded:Connect(function(char)
         end
     end
     
-    -- Reapply bambi if enabled
-    if bambiEnabled then
-        setupBambi()
+    -- Stop fling on respawn
+    if flingEnabled then
+        stopFling()
     end
 end)
 
 -- Cleanup Function
 local function cleanup()
+    -- Stop fling first
+    stopFling()
+    
     -- Disconnect all connections
     for name, connection in pairs(connections) do
         if connection then
@@ -1045,8 +1067,12 @@ local function cleanup()
         if root then
             if root:FindFirstChild("GF_Fly") then root.GF_Fly:Destroy() end
             if root:FindFirstChild("GF_Gyro") then root.GF_Gyro:Destroy() end
+            if root:FindFirstChild("GF_FlingThrust") then root.GF_FlingThrust:Destroy() end
+            if root:FindFirstChild("GF_FlingGyro") then root.GF_FlingGyro:Destroy() end
             root.Size = Vector3.new(2, 2, 1)
             root.Transparency = 1
+            root.RotVelocity = Vector3.new(0, 0, 0)
+            root.Velocity = Vector3.new(0, 0, 0)
         end
     end
     
@@ -1099,5 +1125,6 @@ print("════════════════════════�
 print("🎮 GF HUB v3.0 - Successfully Loaded!")
 print("Created by: Gael Fonzar")
 print("UI: Fluent Library")
+print("Fling System: Real WalkFling (MM2 Style)")
 print("Press RightShift to open/close menu")
 print("═══════════════════════════════════════")
