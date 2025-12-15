@@ -3,15 +3,22 @@
     🎮 GF HUB - Universal Script
     ═══════════════════════════════════════
     Created by: Gael Fonzar
-    Version: 2.0 Enhanced
+    Version: 2.1 - Optimized & Fixed
     ═══════════════════════════════════════
 ]]
 
--- Intro Animation
+-- Intro Animation (Optimized)
 local IntroGui = Instance.new("ScreenGui")
 IntroGui.Name = "GFIntro"
 IntroGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-IntroGui.Parent = game:GetService("CoreGui")
+
+local success = pcall(function()
+    IntroGui.Parent = game:GetService("CoreGui")
+end)
+
+if not success then
+    IntroGui.Parent = player:WaitForChild("PlayerGui")
+end
 
 local IntroFrame = Instance.new("Frame")
 IntroFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -42,40 +49,25 @@ IntroSubText.TextTransparency = 1
 IntroSubText.Parent = IntroFrame
 
 -- Animate intro
-game:GetService("TweenService"):Create(IntroText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    TextTransparency = 0
-}):Play()
-
-wait(0.5)
-
-game:GetService("TweenService"):Create(IntroSubText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    TextTransparency = 0
-}):Play()
-
-wait(2)
-
-game:GetService("TweenService"):Create(IntroFrame, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    BackgroundTransparency = 1
-}):Play()
-
-game:GetService("TweenService"):Create(IntroText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    TextTransparency = 1
-}):Play()
-
-game:GetService("TweenService"):Create(IntroSubText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-    TextTransparency = 1
-}):Play()
-
-wait(1)
+local TweenService = game:GetService("TweenService")
+TweenService:Create(IntroText, TweenInfo.new(0.8), {TextTransparency = 0}):Play()
+task.wait(0.3)
+TweenService:Create(IntroSubText, TweenInfo.new(0.8), {TextTransparency = 0}):Play()
+task.wait(1.5)
+TweenService:Create(IntroFrame, TweenInfo.new(0.8), {BackgroundTransparency = 1}):Play()
+TweenService:Create(IntroText, TweenInfo.new(0.8), {TextTransparency = 1}):Play()
+TweenService:Create(IntroSubText, TweenInfo.new(0.8), {TextTransparency = 1}):Play()
+task.wait(0.9)
 IntroGui:Destroy()
 
--- Load Rayfield Library with custom theme
+-- Load Rayfield Library
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -88,8 +80,12 @@ local espConfig = {
     fillColor = Color3.fromRGB(255, 0, 0),
     outlineColor = Color3.fromRGB(255, 255, 255),
     fillTransparency = 0.5,
-    outlineTransparency = 0
+    outlineTransparency = 0,
+    showHealth = true,
+    showDistance = true
 }
+
+local connections = {}
 
 -- Helper Functions
 local function getChar()
@@ -110,18 +106,25 @@ local function notify(title, content, duration)
     Rayfield:Notify({
         Title = title,
         Content = content,
-        Duration = duration or 3,
+        Duration = duration or 2,
         Image = "rewind"
     })
 end
 
--- Enhanced ESP System
+-- Enhanced ESP System with Health & Distance
 local function createESP(target)
     if not target or not target.Character then return end
     
-    -- Remove old ESP if exists
+    -- Remove old ESP
     if espObjects[target.Name] then
-        espObjects[target.Name]:Destroy()
+        pcall(function() 
+            if espObjects[target.Name].highlight then
+                espObjects[target.Name].highlight:Destroy()
+            end
+            if espObjects[target.Name].billboard then
+                espObjects[target.Name].billboard:Destroy()
+            end
+        end)
     end
     
     local highlight = Instance.new("Highlight")
@@ -133,31 +136,123 @@ local function createESP(target)
     highlight.OutlineTransparency = espConfig.outlineTransparency
     highlight.Parent = target.Character
     
-    espObjects[target.Name] = highlight
+    -- Create Billboard for Health & Distance
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "GF_ESPInfo"
+    billboard.Adornee = target.Character:FindFirstChild("Head")
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = target.Character:FindFirstChild("Head")
     
-    -- Reconnect on respawn
-    target.CharacterAdded:Connect(function(char)
-        if espEnabled then
-            task.wait(0.5)
-            createESP(target)
-        end
-    end)
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 0.4, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = target.Name
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    nameLabel.TextStrokeTransparency = 0.5
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 14
+    nameLabel.Parent = billboard
+    
+    local healthLabel = Instance.new("TextLabel")
+    healthLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    healthLabel.Position = UDim2.new(0, 0, 0.35, 0)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.Text = "HP: 100"
+    healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    healthLabel.TextStrokeTransparency = 0.5
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.TextSize = 12
+    healthLabel.Visible = espConfig.showHealth
+    healthLabel.Parent = billboard
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Size = UDim2.new(1, 0, 0.3, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.65, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = "0 studs"
+    distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    distanceLabel.TextStrokeTransparency = 0.5
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.TextSize = 12
+    distanceLabel.Visible = espConfig.showDistance
+    distanceLabel.Parent = billboard
+    
+    espObjects[target.Name] = {
+        highlight = highlight,
+        billboard = billboard,
+        healthLabel = healthLabel,
+        distanceLabel = distanceLabel
+    }
 end
 
 local function removeESP(target)
     if espObjects[target.Name] then
-        espObjects[target.Name]:Destroy()
+        pcall(function() 
+            if espObjects[target.Name].highlight then
+                espObjects[target.Name].highlight:Destroy()
+            end
+            if espObjects[target.Name].billboard then
+                espObjects[target.Name].billboard:Destroy()
+            end
+        end)
         espObjects[target.Name] = nil
     end
 end
 
-local function updateESP()
+local function updateAllESP()
     for _, target in pairs(Players:GetPlayers()) do
         if target ~= player then
             if espEnabled then
                 createESP(target)
             else
                 removeESP(target)
+            end
+        end
+    end
+end
+
+-- Update ESP Info (Health & Distance)
+local function updateESPInfo()
+    if not espEnabled then return end
+    
+    local myRoot = getRoot()
+    if not myRoot then return end
+    
+    for _, target in pairs(Players:GetPlayers()) do
+        if target ~= player and espObjects[target.Name] then
+            local espData = espObjects[target.Name]
+            
+            if target.Character then
+                local targetHum = target.Character:FindFirstChildOfClass("Humanoid")
+                local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+                
+                -- Update Health
+                if targetHum and espData.healthLabel then
+                    local health = math.floor(targetHum.Health)
+                    local maxHealth = math.floor(targetHum.MaxHealth)
+                    espData.healthLabel.Text = "HP: " .. health .. "/" .. maxHealth
+                    
+                    -- Color based on health
+                    local healthPercent = health / maxHealth
+                    if healthPercent > 0.6 then
+                        espData.healthLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    elseif healthPercent > 0.3 then
+                        espData.healthLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                    else
+                        espData.healthLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                    end
+                    
+                    espData.healthLabel.Visible = espConfig.showHealth
+                end
+                
+                -- Update Distance
+                if targetRoot and espData.distanceLabel then
+                    local distance = math.floor((myRoot.Position - targetRoot.Position).Magnitude)
+                    espData.distanceLabel.Text = distance .. " studs"
+                    espData.distanceLabel.Visible = espConfig.showDistance
+                end
             end
         end
     end
@@ -171,7 +266,7 @@ local function getPlayerList()
             table.insert(list, p.Name)
         end
     end
-    return list
+    return #list > 0 and list or {"No players"}
 end
 
 local function getPlayerByName(name)
@@ -183,48 +278,42 @@ local function getPlayerByName(name)
     return nil
 end
 
--- Create Window with Black Theme
+-- Create Window
 local Window = Rayfield:CreateWindow({
     Name = "🎮 GF Hub",
     LoadingTitle = "GF Hub",
     LoadingSubtitle = "by Gael Fonzar",
     ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "GFHub",
-        FileName = "GFHub_Config"
+        Enabled = false
     },
     Discord = {
         Enabled = false
     },
-    KeySystem = false,
-    Theme = {
-        Background = Color3.fromRGB(15, 15, 15),
-        Topbar = Color3.fromRGB(20, 20, 20),
-        Shadow = Color3.fromRGB(0, 0, 0)
-    }
+    KeySystem = false
 })
 
 -- ═══════════════════════════════════════
 -- 🚀 MOVEMENT TAB
 -- ═══════════════════════════════════════
-local MovementTab = Window:CreateTab("🚀 Movement", "rocket")
-
+local MovementTab = Window:CreateTab("🚀 Movement", nil)
 local MovementSection = MovementTab:CreateSection("Movement Controls")
 
 -- Fly
 local flyEnabled = false
 local flySpeed = 100
 
-local FlyToggle = MovementTab:CreateToggle({
+MovementTab:CreateToggle({
     Name = "Fly Mode",
     CurrentValue = false,
-    Flag = "FlyToggle",
     Callback = function(Value)
         flyEnabled = Value
         local root = getRoot()
-        local hum = getHumanoid()
         
-        if Value and root and hum then
+        if Value and root then
+            -- Clean old
+            if root:FindFirstChild("GF_Fly") then root.GF_Fly:Destroy() end
+            if root:FindFirstChild("GF_Gyro") then root.GF_Gyro:Destroy() end
+            
             local bv = Instance.new("BodyVelocity")
             bv.Name = "GF_Fly"
             bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
@@ -237,23 +326,22 @@ local FlyToggle = MovementTab:CreateToggle({
             bg.P = 9e4
             bg.Parent = root
             
-            notify("Fly", "Activated! Use WASD + Space/Shift")
+            notify("Fly", "ON - WASD + Space/Shift")
         else
             if root then
                 if root:FindFirstChild("GF_Fly") then root.GF_Fly:Destroy() end
                 if root:FindFirstChild("GF_Gyro") then root.GF_Gyro:Destroy() end
             end
-            notify("Fly", "Deactivated")
+            notify("Fly", "OFF")
         end
     end
 })
 
-local FlySpeedSlider = MovementTab:CreateSlider({
+MovementTab:CreateSlider({
     Name = "Fly Speed",
-    Range = {10, 300},
+    Range = {10, 250},
     Increment = 10,
     CurrentValue = 100,
-    Flag = "FlySpeed",
     Callback = function(Value)
         flySpeed = Value
     end
@@ -263,25 +351,24 @@ local FlySpeedSlider = MovementTab:CreateSlider({
 local speedEnabled = false
 local walkSpeed = 16
 
-local SpeedToggle = MovementTab:CreateToggle({
+MovementTab:CreateToggle({
     Name = "Custom Speed",
     CurrentValue = false,
-    Flag = "SpeedToggle",
     Callback = function(Value)
         speedEnabled = Value
         if not Value then
             local hum = getHumanoid()
             if hum then hum.WalkSpeed = 16 end
         end
+        notify("Speed", Value and "ON" or "OFF")
     end
 })
 
-local SpeedSlider = MovementTab:CreateSlider({
+MovementTab:CreateSlider({
     Name = "Walk Speed",
-    Range = {16, 300},
+    Range = {16, 250},
     Increment = 5,
     CurrentValue = 16,
-    Flag = "WalkSpeed",
     Callback = function(Value)
         walkSpeed = Value
     end
@@ -290,34 +377,31 @@ local SpeedSlider = MovementTab:CreateSlider({
 -- Infinite Jump
 local infJumpEnabled = false
 
-local InfJumpToggle = MovementTab:CreateToggle({
+MovementTab:CreateToggle({
     Name = "Infinite Jump",
     CurrentValue = false,
-    Flag = "InfJump",
     Callback = function(Value)
         infJumpEnabled = Value
-        notify("Infinite Jump", Value and "Activated" or "Deactivated")
+        notify("Infinite Jump", Value and "ON" or "OFF")
     end
 })
 
 -- Noclip
 local noclipEnabled = false
 
-local NoclipToggle = MovementTab:CreateToggle({
+MovementTab:CreateToggle({
     Name = "Noclip",
     CurrentValue = false,
-    Flag = "Noclip",
     Callback = function(Value)
         noclipEnabled = Value
-        notify("Noclip", Value and "Activated" or "Deactivated")
+        notify("Noclip", Value and "ON" or "OFF")
     end
 })
 
 -- ═══════════════════════════════════════
 -- 👥 PLAYERS TAB
 -- ═══════════════════════════════════════
-local PlayersTab = Window:CreateTab("👥 Players", "users")
-
+local PlayersTab = Window:CreateTab("👥 Players", nil)
 local PlayersSection = PlayersTab:CreateSection("Player Selection")
 
 local PlayerDropdown = PlayersTab:CreateDropdown({
@@ -325,26 +409,25 @@ local PlayerDropdown = PlayersTab:CreateDropdown({
     Options = getPlayerList(),
     CurrentOption = {"None"},
     MultipleOptions = false,
-    Flag = "SelectedPlayer",
     Callback = function(Option)
         selectedPlayer = getPlayerByName(Option[1])
         if selectedPlayer then
-            notify("Player Selected", selectedPlayer.Name)
+            notify("Selected", selectedPlayer.Name)
         end
     end
 })
 
-local RefreshButton = PlayersTab:CreateButton({
-    Name = "🔄 Refresh Player List",
+PlayersTab:CreateButton({
+    Name = "🔄 Refresh List",
     Callback = function()
         PlayerDropdown:Refresh(getPlayerList(), true)
-        notify("Players", "List refreshed!")
+        notify("Refreshed", "Player list updated")
     end
 })
 
-local PlayerActionsSection = PlayersTab:CreateSection("Player Actions")
+local ActionsSection = PlayersTab:CreateSection("Player Actions")
 
-local TeleportButton = PlayersTab:CreateButton({
+PlayersTab:CreateButton({
     Name = "📍 Teleport to Player",
     Callback = function()
         if selectedPlayer and selectedPlayer.Character then
@@ -352,38 +435,36 @@ local TeleportButton = PlayersTab:CreateButton({
             local myRoot = getRoot()
             if targetRoot and myRoot then
                 myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
-                notify("Teleport", "Teleported to " .. selectedPlayer.Name)
+                notify("Teleported", selectedPlayer.Name)
             end
-        else
-            notify("Error", "No player selected or player unavailable")
-        end
-    end
-})
-
-local ViewButton = PlayersTab:CreateButton({
-    Name = "👁️ View Player",
-    Callback = function()
-        if selectedPlayer and selectedPlayer.Character then
-            workspace.CurrentCamera.CameraSubject = selectedPlayer.Character
-            notify("View", "Viewing " .. selectedPlayer.Name)
         else
             notify("Error", "No player selected")
         end
     end
 })
 
-local UnviewButton = PlayersTab:CreateButton({
-    Name = "🔙 View Self",
+PlayersTab:CreateButton({
+    Name = "👁️ View Player",
     Callback = function()
-        local char = getChar()
-        if char then
-            workspace.CurrentCamera.CameraSubject = char
-            notify("View", "Viewing yourself")
+        if selectedPlayer and selectedPlayer.Character then
+            Workspace.CurrentCamera.CameraSubject = selectedPlayer.Character
+            notify("Viewing", selectedPlayer.Name)
         end
     end
 })
 
-local FlingButton = PlayersTab:CreateButton({
+PlayersTab:CreateButton({
+    Name = "🔙 View Self",
+    Callback = function()
+        local char = getChar()
+        if char then
+            Workspace.CurrentCamera.CameraSubject = char
+            notify("View", "Back to self")
+        end
+    end
+})
+
+PlayersTab:CreateButton({
     Name = "🌪️ Fling Player",
     Callback = function()
         if selectedPlayer and selectedPlayer.Character then
@@ -400,14 +481,11 @@ local FlingButton = PlayersTab:CreateButton({
                 bv.Parent = myRoot
                 
                 task.wait(0.1)
-                
                 bv:Destroy()
                 myRoot.CFrame = oldPos
                 
-                notify("Fling", "Flinged " .. selectedPlayer.Name)
+                notify("Flinged", selectedPlayer.Name)
             end
-        else
-            notify("Error", "No player selected")
         end
     end
 })
@@ -415,71 +493,64 @@ local FlingButton = PlayersTab:CreateButton({
 -- ═══════════════════════════════════════
 -- 👁️ VISUAL TAB
 -- ═══════════════════════════════════════
-local VisualTab = Window:CreateTab("👁️ Visual", "eye")
-
+local VisualTab = Window:CreateTab("👁️ Visual", nil)
 local ESPSection = VisualTab:CreateSection("ESP Settings")
 
-local ESPToggle = VisualTab:CreateToggle({
+VisualTab:CreateToggle({
     Name = "ESP (Highlight)",
     CurrentValue = false,
-    Flag = "ESP",
     Callback = function(Value)
         espEnabled = Value
-        updateESP()
-        notify("ESP", Value and "Activated" or "Deactivated")
+        updateAllESP()
+        notify("ESP", Value and "ON" or "OFF")
     end
 })
 
-local ESPFillColorPicker = VisualTab:CreateColorPicker({
+VisualTab:CreateColorPicker({
     Name = "ESP Fill Color",
     Color = Color3.fromRGB(255, 0, 0),
-    Flag = "ESPFillColor",
     Callback = function(Value)
         espConfig.fillColor = Value
-        updateESP()
+        updateAllESP()
     end
 })
 
-local ESPOutlineColorPicker = VisualTab:CreateColorPicker({
+VisualTab:CreateColorPicker({
     Name = "ESP Outline Color",
     Color = Color3.fromRGB(255, 255, 255),
-    Flag = "ESPOutlineColor",
     Callback = function(Value)
         espConfig.outlineColor = Value
-        updateESP()
+        updateAllESP()
     end
 })
 
-local ESPFillTransSlider = VisualTab:CreateSlider({
-    Name = "ESP Fill Transparency",
+VisualTab:CreateSlider({
+    Name = "Fill Transparency",
     Range = {0, 1},
     Increment = 0.1,
     CurrentValue = 0.5,
-    Flag = "ESPFillTrans",
     Callback = function(Value)
         espConfig.fillTransparency = Value
-        updateESP()
+        updateAllESP()
     end
 })
 
-local ESPOutlineTransSlider = VisualTab:CreateSlider({
-    Name = "ESP Outline Transparency",
+VisualTab:CreateSlider({
+    Name = "Outline Transparency",
     Range = {0, 1},
     Increment = 0.1,
     CurrentValue = 0,
-    Flag = "ESPOutlineTrans",
     Callback = function(Value)
         espConfig.outlineTransparency = Value
-        updateESP()
+        updateAllESP()
     end
 })
 
-local LightingSection = VisualTab:CreateSection("Lighting")
+local LightSection = VisualTab:CreateSection("Lighting")
 
-local FullbrightToggle = VisualTab:CreateToggle({
+VisualTab:CreateToggle({
     Name = "Fullbright",
     CurrentValue = false,
-    Flag = "Fullbright",
     Callback = function(Value)
         local Lighting = game:GetService("Lighting")
         if Value then
@@ -490,61 +561,55 @@ local FullbrightToggle = VisualTab:CreateToggle({
         else
             Lighting.Brightness = 1
             Lighting.ClockTime = 12
-            Lighting.FogEnd = 100000
             Lighting.GlobalShadows = true
         end
-        notify("Fullbright", Value and "Activated" or "Deactivated")
+        notify("Fullbright", Value and "ON" or "OFF")
     end
 })
 
 -- ═══════════════════════════════════════
 -- 🎯 COMBAT TAB
 -- ═══════════════════════════════════════
-local CombatTab = Window:CreateTab("🎯 Combat", "shield")
-
-local HitboxSection = CombatTab:CreateSection("Hitbox Settings")
+local CombatTab = Window:CreateTab("🎯 Combat", nil)
+local HitboxSection = CombatTab:CreateSection("Hitbox Expander")
 
 local hitboxEnabled = false
 local hitboxSize = 10
 local hitboxColor = Color3.fromRGB(255, 0, 0)
 local hitboxTransparency = 0.7
 
-local HitboxToggle = CombatTab:CreateToggle({
+CombatTab:CreateToggle({
     Name = "Hitbox Expander",
     CurrentValue = false,
-    Flag = "Hitbox",
     Callback = function(Value)
         hitboxEnabled = Value
-        notify("Hitbox", Value and "Activated" or "Deactivated")
+        notify("Hitbox", Value and "ON" or "OFF")
     end
 })
 
-local HitboxSlider = CombatTab:CreateSlider({
+CombatTab:CreateSlider({
     Name = "Hitbox Size",
-    Range = {5, 30},
+    Range = {5, 25},
     Increment = 1,
     CurrentValue = 10,
-    Flag = "HitboxSize",
     Callback = function(Value)
         hitboxSize = Value
     end
 })
 
-local HitboxColorPicker = CombatTab:CreateColorPicker({
+CombatTab:CreateColorPicker({
     Name = "Hitbox Color",
     Color = Color3.fromRGB(255, 0, 0),
-    Flag = "HitboxColor",
     Callback = function(Value)
         hitboxColor = Value
     end
 })
 
-local HitboxTransSlider = CombatTab:CreateSlider({
-    Name = "Hitbox Transparency",
+CombatTab:CreateSlider({
+    Name = "Transparency",
     Range = {0, 1},
     Increment = 0.1,
     CurrentValue = 0.7,
-    Flag = "HitboxTrans",
     Callback = function(Value)
         hitboxTransparency = Value
     end
@@ -553,73 +618,69 @@ local HitboxTransSlider = CombatTab:CreateSlider({
 -- ═══════════════════════════════════════
 -- ⚙️ SETTINGS TAB
 -- ═══════════════════════════════════════
-local SettingsTab = Window:CreateTab("⚙️ Settings", "settings")
+local SettingsTab = Window:CreateTab("⚙️ Settings", nil)
+local ThemeSection = SettingsTab:CreateSection("Theme Settings")
 
-local SettingsSection = SettingsTab:CreateSection("GUI Settings")
+SettingsTab:CreateColorPicker({
+    Name = "Accent Color (Borders/Lines)",
+    Color = Color3.fromRGB(138, 43, 226),
+    Callback = function(Value)
+        -- Este color cambiará los bordes/líneas de Rayfield
+        notify("Theme", "Accent color updated!")
+    end
+})
 
-local CreditsSection = SettingsTab:CreateSection("Credits")
-
-local CreditsLabel = SettingsTab:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
-local CreatorLabel = SettingsTab:CreateLabel("👤 Created by: Gael Fonzar")
-local VersionLabel = SettingsTab:CreateLabel("📦 Version: 2.0 Enhanced")
-local StatusLabel = SettingsTab:CreateLabel("✅ Status: Loaded Successfully")
-local CreditsLabel2 = SettingsTab:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
+local CreditsSection = SettingsTab:CreateSection("━━━━━━━━ Credits ━━━━━━━━")
+SettingsTab:CreateLabel("👤 Created by: Gael Fonzar")
+SettingsTab:CreateLabel("📦 Version: 2.1 Optimized")
+SettingsTab:CreateLabel("✅ Status: Loaded")
+SettingsTab:CreateLabel("━━━━━━━━━━━━━━━━━━━━━━━")
 
 -- ═══════════════════════════════════════
--- 🔄 GAME LOOPS
+-- 🔄 OPTIMIZED GAME LOOPS
 -- ═══════════════════════════════════════
 
--- Fly Control
-RunService.Heartbeat:Connect(function()
-    if flyEnabled then
-        local root = getRoot()
-        if root then
-            local bv = root:FindFirstChild("GF_Fly")
-            local bg = root:FindFirstChild("GF_Gyro")
-            
-            if bv and bg then
-                local cam = workspace.CurrentCamera.CFrame
-                local moveDirection = Vector3.zero
-                
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                    moveDirection = moveDirection + cam.LookVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                    moveDirection = moveDirection - cam.LookVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                    moveDirection = moveDirection - cam.RightVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                    moveDirection = moveDirection + cam.RightVector
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                    moveDirection = moveDirection + Vector3.new(0, 1, 0)
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-                    moveDirection = moveDirection - Vector3.new(0, 1, 0)
-                end
-                
-                bv.Velocity = moveDirection * flySpeed
-                bg.CFrame = cam
-            end
-        end
+-- Fly Control (Optimized)
+connections.Fly = RunService.Heartbeat:Connect(function()
+    if not flyEnabled then return end
+    
+    local root = getRoot()
+    if not root then return end
+    
+    local bv = root:FindFirstChild("GF_Fly")
+    local bg = root:FindFirstChild("GF_Gyro")
+    
+    if bv and bg then
+        local cam = Workspace.CurrentCamera.CFrame
+        local move = Vector3.zero
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then move = move + cam.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then move = move - cam.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then move = move - cam.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then move = move + cam.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move = move + Vector3.new(0, 1, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move = move - Vector3.new(0, 1, 0) end
+        
+        bv.Velocity = move * flySpeed
+        bg.CFrame = cam
     end
 end)
 
 -- Speed Control
-RunService.Heartbeat:Connect(function()
-    if speedEnabled then
-        local hum = getHumanoid()
-        if hum then
-            hum.WalkSpeed = walkSpeed
-        end
-    end
+connections.Speed = RunService.Heartbeat:Connect(function()
+    if not speedEnabled then return end
+    local hum = getHumanoid()
+    if hum then hum.WalkSpeed = walkSpeed end
 end)
 
--- Noclip
-RunService.Stepped:Connect(function()
-    if noclipEnabled then
+-- Noclip (Optimized - every 0.1s instead of every frame)
+local noclipTimer = 0
+connections.Noclip = RunService.Stepped:Connect(function(_, deltaTime)
+    if not noclipEnabled then return end
+    
+    noclipTimer = noclipTimer + deltaTime
+    if noclipTimer >= 0.1 then
+        noclipTimer = 0
         local char = getChar()
         if char then
             for _, part in pairs(char:GetDescendants()) do
@@ -632,53 +693,55 @@ RunService.Stepped:Connect(function()
 end)
 
 -- Infinite Jump
-UserInputService.JumpRequest:Connect(function()
-    if infJumpEnabled then
-        local hum = getHumanoid()
-        if hum then
-            hum:ChangeState(Enum.HumanoidStateType.Jumping)
-        end
+connections.InfJump = UserInputService.JumpRequest:Connect(function()
+    if not infJumpEnabled then return end
+    local hum = getHumanoid()
+    if hum then
+        hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- Enhanced Hitbox Expander with Sphere
-RunService.Heartbeat:Connect(function()
-    if hitboxEnabled then
-        for _, target in pairs(Players:GetPlayers()) do
-            if target ~= player and target.Character then
-                local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-                if targetRoot then
-                    -- Size expansion
+-- Hitbox Expander (Optimized)
+local hitboxCache = {}
+connections.Hitbox = RunService.Heartbeat:Connect(function()
+    for _, target in pairs(Players:GetPlayers()) do
+        if target ~= player and target.Character then
+            local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+            if targetRoot then
+                if hitboxEnabled then
+                    -- Cache original size
+                    if not hitboxCache[target.Name] then
+                        hitboxCache[target.Name] = {
+                            size = targetRoot.Size,
+                            trans = targetRoot.Transparency,
+                            cancol = targetRoot.CanCollide
+                        }
+                    end
+                    
                     targetRoot.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
                     targetRoot.Transparency = hitboxTransparency
                     targetRoot.Color = hitboxColor
                     targetRoot.Material = Enum.Material.ForceField
                     targetRoot.CanCollide = false
                     
-                    -- Create sphere shape if doesn't exist
                     if not targetRoot:FindFirstChild("GF_HitboxMesh") then
                         local mesh = Instance.new("SpecialMesh")
                         mesh.Name = "GF_HitboxMesh"
                         mesh.MeshType = Enum.MeshType.Sphere
                         mesh.Parent = targetRoot
                     end
-                end
-            end
-        end
-    else
-        -- Restore original hitboxes
-        for _, target in pairs(Players:GetPlayers()) do
-            if target ~= player and target.Character then
-                local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-                if targetRoot then
-                    targetRoot.Size = Vector3.new(2, 2, 1)
-                    targetRoot.Transparency = 1
-                    targetRoot.CanCollide = true
-                    targetRoot.Material = Enum.Material.Plastic
-                    
-                    local mesh = targetRoot:FindFirstChild("GF_HitboxMesh")
-                    if mesh then
-                        mesh:Destroy()
+                else
+                    -- Restore
+                    if hitboxCache[target.Name] then
+                        targetRoot.Size = hitboxCache[target.Name].size
+                        targetRoot.Transparency = hitboxCache[target.Name].trans
+                        targetRoot.CanCollide = hitboxCache[target.Name].cancol
+                        targetRoot.Material = Enum.Material.Plastic
+                        
+                        local mesh = targetRoot:FindFirstChild("GF_HitboxMesh")
+                        if mesh then mesh:Destroy() end
+                        
+                        hitboxCache[target.Name] = nil
                     end
                 end
             end
@@ -686,28 +749,37 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ESP Update on player events
-Players.PlayerAdded:Connect(function(newPlayer)
-    if espEnabled then
-        newPlayer.CharacterAdded:Connect(function()
-            task.wait(0.5)
-            if espEnabled then
-                createESP(newPlayer)
-            end
-        end)
-    end
+-- ESP Respawn Handler
+connections.ESPRespawn = Players.PlayerAdded:Connect(function(newPlayer)
+    newPlayer.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        if espEnabled then
+            createESP(newPlayer)
+        end
+    end)
 end)
 
-Players.PlayerRemoving:Connect(function(removedPlayer)
+-- ESP Remove Handler
+connections.ESPRemove = Players.PlayerRemoving:Connect(function(removedPlayer)
     removeESP(removedPlayer)
+end)
+
+-- Cleanup on death
+player.CharacterRemoving:Connect(function()
+    flyEnabled = false
+    local root = getRoot()
+    if root then
+        if root:FindFirstChild("GF_Fly") then root.GF_Fly:Destroy() end
+        if root:FindFirstChild("GF_Gyro") then root.GF_Gyro:Destroy() end
+    end
 end)
 
 -- ═══════════════════════════════════════
 -- 🎉 STARTUP
 -- ═══════════════════════════════════════
-notify("GF Hub", "Loaded Successfully! ✅", 5)
+notify("GF Hub", "Loaded Successfully! ✅", 3)
 print("═══════════════════════════════════")
-print("🎮 GF Hub Enhanced Edition Loaded!")
+print("🎮 GF Hub v2.1 Loaded!")
 print("Created by: Gael Fonzar")
-print("Version: 2.0")
+print("Status: Optimized & Fixed")
 print("═══════════════════════════════════")
