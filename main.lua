@@ -3,77 +3,24 @@
     🎮 GF HUB - Universal Script
     ═══════════════════════════════════════
     Created by: Gael Fonzar
-    Version: 3.0 - Linoria UI
-    Best customization & performance
+    Version: 3.0 - Fluent UI
+    Modern design & Auto WalkFling
     ═══════════════════════════════════════
 ]]
 
--- Intro Animation
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local player = Players.LocalPlayer
-
-local IntroGui = Instance.new("ScreenGui")
-IntroGui.Name = "GFIntro"
-IntroGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-IntroGui.IgnoreGuiInset = true
-
-local success = pcall(function()
-    IntroGui.Parent = game:GetService("CoreGui")
-end)
-if not success then
-    IntroGui.Parent = player:WaitForChild("PlayerGui")
-end
-
-local IntroFrame = Instance.new("Frame")
-IntroFrame.Size = UDim2.new(1, 0, 1, 0)
-IntroFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-IntroFrame.BorderSizePixel = 0
-IntroFrame.Parent = IntroGui
-
-local IntroText = Instance.new("TextLabel")
-IntroText.Size = UDim2.new(0, 400, 0, 100)
-IntroText.Position = UDim2.new(0.5, -200, 0.5, -50)
-IntroText.BackgroundTransparency = 1
-IntroText.Text = "GF Hub"
-IntroText.TextColor3 = Color3.fromRGB(255, 255, 255)
-IntroText.Font = Enum.Font.GothamBold
-IntroText.TextSize = 60
-IntroText.TextTransparency = 1
-IntroText.Parent = IntroFrame
-
-local IntroSubText = Instance.new("TextLabel")
-IntroSubText.Size = UDim2.new(0, 400, 0, 30)
-IntroSubText.Position = UDim2.new(0.5, -200, 0.5, 40)
-IntroSubText.BackgroundTransparency = 1
-IntroSubText.Text = "Presents..."
-IntroSubText.TextColor3 = Color3.fromRGB(200, 200, 200)
-IntroSubText.Font = Enum.Font.Gotham
-IntroSubText.TextSize = 24
-IntroSubText.TextTransparency = 1
-IntroSubText.Parent = IntroFrame
-
-TweenService:Create(IntroText, TweenInfo.new(0.8), {TextTransparency = 0}):Play()
-task.wait(0.3)
-TweenService:Create(IntroSubText, TweenInfo.new(0.8), {TextTransparency = 0}):Play()
-task.wait(1.5)
-TweenService:Create(IntroFrame, TweenInfo.new(0.8), {BackgroundTransparency = 1}):Play()
-TweenService:Create(IntroText, TweenInfo.new(0.8), {TextTransparency = 1}):Play()
-TweenService:Create(IntroSubText, TweenInfo.new(0.8), {TextTransparency = 1}):Play()
-task.wait(0.9)
-IntroGui:Destroy()
-
--- Load Linoria Library
-local repo = 'https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/'
-local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
-local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
-local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
+-- Load Fluent Library (Modern UI)
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 -- Services
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
+local TweenService = game:GetService("TweenService")
 
+local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
 -- Variables
@@ -91,6 +38,12 @@ local espConfig = {
 
 local connections = {}
 local hitboxCache = {}
+
+-- WalkFling Variables
+local walkFlingEnabled = false
+local flingPower = 500
+local flingHeight = 300
+local bambiEnabled = false
 
 -- Helper Functions
 local function getChar()
@@ -111,7 +64,6 @@ end
 local function createESP(target)
     if not target or not target.Character then return end
     
-    -- Remove old ESP
     if espObjects[target.Name] then
         pcall(function() 
             if espObjects[target.Name].highlight then
@@ -135,7 +87,6 @@ local function createESP(target)
     local head = target.Character:FindFirstChild("Head")
     if not head then return end
     
-    -- Create Billboard for Health & Distance
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "GF_ESPInfo"
     billboard.Adornee = head
@@ -212,7 +163,6 @@ local function updateAllESP()
     end
 end
 
--- Update ESP Info
 local function updateESPInfo()
     if not espEnabled then return end
     
@@ -227,7 +177,6 @@ local function updateESPInfo()
                 local targetHum = target.Character:FindFirstChildOfClass("Humanoid")
                 local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
                 
-                -- Update Health
                 if targetHum and espData.healthLabel then
                     local health = math.floor(targetHum.Health)
                     local maxHealth = math.floor(targetHum.MaxHealth)
@@ -245,7 +194,6 @@ local function updateESPInfo()
                     espData.healthLabel.Visible = espConfig.showHealth
                 end
                 
-                -- Update Distance
                 if targetRoot and espData.distanceLabel then
                     local distance = math.floor((myRoot.Position - targetRoot.Position).Magnitude)
                     espData.distanceLabel.Text = distance .. " studs"
@@ -256,7 +204,6 @@ local function updateESPInfo()
     end
 end
 
--- Player List
 local function getPlayerList()
     local list = {}
     for _, p in pairs(Players:GetPlayers()) do
@@ -276,37 +223,177 @@ local function getPlayerByName(name)
     return nil
 end
 
+-- BAMBI SETUP (Para WalkFling extremo)
+local function setupBambi()
+    local char = getChar()
+    if not char then return end
+    
+    -- Hacer invisible y sin colisiones
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+            part.Massless = true
+            if part.Name ~= "HumanoidRootPart" then
+                part.Transparency = 1
+            end
+        elseif part:IsA("Decal") or part:IsA("Texture") then
+            part.Transparency = 1
+        end
+    end
+    
+    -- Configurar HumanoidRootPart para fling extremo
+    local root = getRoot()
+    if root then
+        root.Transparency = 1
+        root.Size = Vector3.new(2, 2, 2)
+        root.CanCollide = false
+        root.Massless = true
+    end
+end
+
+local function resetBambi()
+    local char = getChar()
+    if not char then return end
+    
+    for _, part in pairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+            part.Massless = false
+            if part.Name ~= "HumanoidRootPart" then
+                part.Transparency = 0
+            end
+        elseif part:IsA("Decal") or part:IsA("Texture") then
+            part.Transparency = 0
+        end
+    end
+    
+    local root = getRoot()
+    if root then
+        root.Transparency = 1
+        root.Size = Vector3.new(2, 2, 1)
+        root.CanCollide = false
+    end
+end
+
+-- EXTREME FLING con Teleport + WalkFling
+local function extremeFling(target)
+    if not target or not target.Character then
+        Fluent:Notify({
+            Title = "❌ Error",
+            Content = "No player selected!",
+            Duration = 3
+        })
+        return
+    end
+    
+    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+    local myRoot = getRoot()
+    local myChar = getChar()
+    
+    if not targetRoot or not myRoot or not myChar then
+        Fluent:Notify({
+            Title = "❌ Error",
+            Content = "Character not found!",
+            Duration = 3
+        })
+        return
+    end
+    
+    Fluent:Notify({
+        Title = "🌪️ Flinging",
+        Content = "Launching " .. target.Name .. " to space!",
+        Duration = 2
+    })
+    
+    local originalPos = myRoot.CFrame
+    
+    -- Setup Bambi
+    setupBambi()
+    
+    -- Teleport encima del jugador
+    myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 3, 0)
+    
+    task.wait(0.1)
+    
+    -- Crear BodyVelocity para lanzar
+    local bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    bv.Velocity = Vector3.new(
+        math.random(-flingPower, flingPower), 
+        flingHeight, 
+        math.random(-flingPower, flingPower)
+    )
+    bv.Parent = myRoot
+    
+    -- Mantener presión por 0.3 segundos
+    task.wait(0.3)
+    
+    if bv and bv.Parent then
+        bv:Destroy()
+    end
+    
+    task.wait(0.2)
+    
+    -- Volver a posición original
+    myRoot.CFrame = originalPos
+    
+    -- Reset Bambi si está desactivado
+    if not bambiEnabled then
+        resetBambi()
+    end
+    
+    Fluent:Notify({
+        Title = "✅ Success",
+        Content = target.Name .. " has been yeeted!",
+        Duration = 2
+    })
+end
+
 -- Create Window
-local Window = Library:CreateWindow({
-    Title = '🎮 GF Hub v3.0',
-    Center = true,
-    AutoShow = true,
-    TabPadding = 8,
-    MenuFadeTime = 0.2
+local Window = Fluent:CreateWindow({
+    Title = "🎮 GF HUB " .. Fluent.Version,
+    SubTitle = "by Gael Fonzar",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Darker",
+    MinimizeKey = Enum.KeyCode.RightShift
 })
 
 -- Create Tabs
 local Tabs = {
-    Movement = Window:AddTab('🚀 Movement'),
-    Players = Window:AddTab('👥 Players'),
-    Visual = Window:AddTab('👁️ Visual'),
-    Combat = Window:AddTab('🎯 Combat'),
-    Settings = Window:AddTab('⚙️ Settings')
+    Main = Window:AddTab({ Title = "🏠 Main", Icon = "home" }),
+    Movement = Window:AddTab({ Title = "🚀 Movement", Icon = "wind" }),
+    Players = Window:AddTab({ Title = "👥 Players", Icon = "users" }),
+    Combat = Window:AddTab({ Title = "🎯 Combat", Icon = "sword" }),
+    Visual = Window:AddTab({ Title = "👁️ Visual", Icon = "eye" }),
+    Settings = Window:AddTab({ Title = "⚙️ Settings", Icon = "settings" })
 }
+
+-- ═══════════════════════════════════════
+-- 🏠 MAIN TAB
+-- ═══════════════════════════════════════
+
+Tabs.Main:AddParagraph({
+    Title = "Welcome to GF HUB!",
+    Content = "Version 3.0 with Fluent UI\nCreated by Gael Fonzar\n\nFeatures:\n• Extreme WalkFling System\n• Advanced ESP\n• Movement Controls\n• Combat Tools"
+})
 
 -- ═══════════════════════════════════════
 -- 🚀 MOVEMENT TAB
 -- ═══════════════════════════════════════
-local MovementBox = Tabs.Movement:AddLeftGroupbox('Movement Controls')
 
--- Fly
 local flyEnabled = false
 local flySpeed = 100
+local speedEnabled = false
+local walkSpeed = 16
+local infJumpEnabled = false
+local noclipEnabled = false
 
-MovementBox:AddToggle('FlyToggle', {
-    Text = 'Fly Mode',
+local FlyToggle = Tabs.Movement:AddToggle("FlyToggle", {
+    Title = "Fly Mode",
+    Description = "Fly using WASD + Space/Shift",
     Default = false,
-    Tooltip = 'Fly using WASD + Space/Shift',
     Callback = function(Value)
         flyEnabled = Value
         local root = getRoot()
@@ -327,227 +414,338 @@ MovementBox:AddToggle('FlyToggle', {
             bg.P = 9e4
             bg.Parent = root
             
-            Library:Notify('Fly activated! Use WASD + Space/Shift', 3)
+            Fluent:Notify({
+                Title = "✈️ Fly Activated",
+                Content = "Use WASD + Space/Shift to fly!",
+                Duration = 3
+            })
         else
             if root then
                 if root:FindFirstChild("GF_Fly") then root.GF_Fly:Destroy() end
                 if root:FindFirstChild("GF_Gyro") then root.GF_Gyro:Destroy() end
             end
-            Library:Notify('Fly deactivated', 2)
+            Fluent:Notify({
+                Title = "Fly Deactivated",
+                Content = "",
+                Duration = 2
+            })
         end
     end
 })
 
-MovementBox:AddSlider('FlySpeed', {
-    Text = 'Fly Speed',
+local FlySpeedSlider = Tabs.Movement:AddSlider("FlySpeed", {
+    Title = "Fly Speed",
+    Description = "Adjust your fly speed",
     Default = 100,
     Min = 10,
-    Max = 250,
+    Max = 300,
     Rounding = 0,
-    Compact = false,
     Callback = function(Value)
         flySpeed = Value
     end
 })
 
-MovementBox:AddDivider()
+Tabs.Movement:AddSection("Walking")
 
--- Speed
-local speedEnabled = false
-local walkSpeed = 16
-
-MovementBox:AddToggle('SpeedToggle', {
-    Text = 'Custom Speed',
+local SpeedToggle = Tabs.Movement:AddToggle("SpeedToggle", {
+    Title = "Custom Speed",
+    Description = "Change your walk speed",
     Default = false,
-    Tooltip = 'Change your walk speed',
     Callback = function(Value)
         speedEnabled = Value
         if not Value then
             local hum = getHumanoid()
             if hum then hum.WalkSpeed = 16 end
         end
-        Library:Notify('Speed ' .. (Value and 'enabled' or 'disabled'), 2)
+        Fluent:Notify({
+            Title = Value and "Speed Enabled" or "Speed Disabled",
+            Content = "",
+            Duration = 2
+        })
     end
 })
 
-MovementBox:AddSlider('WalkSpeed', {
-    Text = 'Walk Speed',
+local WalkSpeedSlider = Tabs.Movement:AddSlider("WalkSpeed", {
+    Title = "Walk Speed",
+    Description = "Set walk speed",
     Default = 16,
     Min = 16,
-    Max = 250,
+    Max = 300,
     Rounding = 0,
-    Compact = false,
     Callback = function(Value)
         walkSpeed = Value
     end
 })
 
-MovementBox:AddDivider()
+Tabs.Movement:AddSection("Other Movement")
 
--- Infinite Jump
-local infJumpEnabled = false
-
-MovementBox:AddToggle('InfJump', {
-    Text = 'Infinite Jump',
+local InfJumpToggle = Tabs.Movement:AddToggle("InfJump", {
+    Title = "Infinite Jump",
+    Description = "Jump infinitely",
     Default = false,
     Callback = function(Value)
         infJumpEnabled = Value
-        Library:Notify('Infinite Jump ' .. (Value and 'ON' or 'OFF'), 2)
+        Fluent:Notify({
+            Title = Value and "Infinite Jump ON" or "Infinite Jump OFF",
+            Content = "",
+            Duration = 2
+        })
     end
 })
 
--- Noclip
-local noclipEnabled = false
-
-MovementBox:AddToggle('Noclip', {
-    Text = 'Noclip',
+local NoclipToggle = Tabs.Movement:AddToggle("Noclip", {
+    Title = "Noclip",
+    Description = "Walk through walls",
     Default = false,
     Callback = function(Value)
         noclipEnabled = Value
-        Library:Notify('Noclip ' .. (Value and 'ON' or 'OFF'), 2)
+        Fluent:Notify({
+            Title = Value and "Noclip ON" or "Noclip OFF",
+            Content = "",
+            Duration = 2
+        })
     end
 })
 
 -- ═══════════════════════════════════════
 -- 👥 PLAYERS TAB
 -- ═══════════════════════════════════════
-local PlayerBox = Tabs.Players:AddLeftGroupbox('Player Selection')
 
-PlayerBox:AddDropdown('PlayerSelect', {
+Tabs.Players:AddParagraph({
+    Title = "Player Selection",
+    Content = "Select a player to interact with them"
+})
+
+local PlayerDropdown = Tabs.Players:AddDropdown("PlayerSelect", {
+    Title = "Select Player",
+    Description = "Choose a player",
     Values = getPlayerList(),
     Default = 1,
-    Multi = false,
-    Text = 'Select Player',
-    Tooltip = 'Choose a player to interact with',
     Callback = function(Value)
         selectedPlayer = getPlayerByName(Value)
         if selectedPlayer then
-            Library:Notify('Selected: ' .. selectedPlayer.Name, 2)
+            Fluent:Notify({
+                Title = "✅ Player Selected",
+                Content = selectedPlayer.Name,
+                Duration = 2
+            })
         end
     end
 })
 
-PlayerBox:AddButton({
-    Text = '🔄 Refresh Players',
-    Func = function()
-        Options.PlayerSelect:SetValues(getPlayerList())
-        Library:Notify('Player list refreshed!', 2)
-    end,
-    DoubleClick = false
+Tabs.Players:AddButton({
+    Title = "🔄 Refresh Player List",
+    Description = "Update the player list",
+    Callback = function()
+        PlayerDropdown:SetValues(getPlayerList())
+        Fluent:Notify({
+            Title = "Refreshed",
+            Content = "Player list updated!",
+            Duration = 2
+        })
+    end
 })
 
-local ActionsBox = Tabs.Players:AddRightGroupbox('Player Actions')
+Tabs.Players:AddSection("Actions")
 
-ActionsBox:AddButton({
-    Text = '📍 Teleport to Player',
-    Func = function()
+Tabs.Players:AddButton({
+    Title = "📍 Teleport to Player",
+    Description = "Teleport to selected player",
+    Callback = function()
         if selectedPlayer and selectedPlayer.Character then
             local targetRoot = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
             local myRoot = getRoot()
             if targetRoot and myRoot then
                 myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
-                Library:Notify('Teleported to ' .. selectedPlayer.Name, 2)
+                Fluent:Notify({
+                    Title = "✅ Teleported",
+                    Content = "Teleported to " .. selectedPlayer.Name,
+                    Duration = 2
+                })
             end
         else
-            Library:Notify('No player selected!', 3)
+            Fluent:Notify({
+                Title = "❌ Error",
+                Content = "No player selected!",
+                Duration = 3
+            })
         end
     end
 })
 
-ActionsBox:AddButton({
-    Text = '👁️ View Player',
-    Func = function()
+Tabs.Players:AddButton({
+    Title = "👁️ View Player",
+    Description = "View selected player's perspective",
+    Callback = function()
         if selectedPlayer and selectedPlayer.Character then
             Workspace.CurrentCamera.CameraSubject = selectedPlayer.Character
-            Library:Notify('Viewing ' .. selectedPlayer.Name, 2)
+            Fluent:Notify({
+                Title = "👁️ Viewing",
+                Content = selectedPlayer.Name,
+                Duration = 2
+            })
         else
-            Library:Notify('No player selected!', 3)
+            Fluent:Notify({
+                Title = "❌ Error",
+                Content = "No player selected!",
+                Duration = 3
+            })
         end
     end
 })
 
-ActionsBox:AddButton({
-    Text = '🔙 View Self',
-    Func = function()
+Tabs.Players:AddButton({
+    Title = "🔙 View Self",
+    Description = "Return camera to yourself",
+    Callback = function()
         local char = getChar()
         if char then
             Workspace.CurrentCamera.CameraSubject = char
-            Library:Notify('Viewing yourself', 2)
+            Fluent:Notify({
+                Title = "Viewing Yourself",
+                Content = "",
+                Duration = 2
+            })
         end
     end
 })
 
-ActionsBox:AddButton({
-    Text = '🌪️ Fling Player',
-    Func = function()
-        if not selectedPlayer or not selectedPlayer.Character then
-            Library:Notify('No player selected!', 3)
-            return
+Tabs.Players:AddSection("Fling System")
+
+local FlingPowerSlider = Tabs.Players:AddSlider("FlingPower", {
+    Title = "Fling Power",
+    Description = "Horizontal launch power",
+    Default = 500,
+    Min = 100,
+    Max = 1000,
+    Rounding = 0,
+    Callback = function(Value)
+        flingPower = Value
+    end
+})
+
+local FlingHeightSlider = Tabs.Players:AddSlider("FlingHeight", {
+    Title = "Fling Height",
+    Description = "Vertical launch power",
+    Default = 300,
+    Min = 100,
+    Max = 800,
+    Rounding = 0,
+    Callback = function(Value)
+        flingHeight = Value
+    end
+})
+
+Tabs.Players:AddButton({
+    Title = "🌪️ FLING PLAYER",
+    Description = "Launch player to space!",
+    Callback = function()
+        extremeFling(selectedPlayer)
+    end
+})
+
+local BambiToggle = Tabs.Players:AddToggle("BambiMode", {
+    Title = "Bambi Mode (Permanent)",
+    Description = "Stay invisible for extreme fling",
+    Default = false,
+    Callback = function(Value)
+        bambiEnabled = Value
+        if Value then
+            setupBambi()
+            Fluent:Notify({
+                Title = "👻 Bambi Mode ON",
+                Content = "You are now invisible!",
+                Duration = 2
+            })
+        else
+            resetBambi()
+            Fluent:Notify({
+                Title = "Bambi Mode OFF",
+                Content = "Visibility restored",
+                Duration = 2
+            })
         end
-        
-        local targetRoot = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local myRoot = getRoot()
-        local myChar = getChar()
-        
-        if not targetRoot or not myRoot or not myChar then
-            Library:Notify('Character not found!', 3)
-            return
-        end
-        
-        local originalPos = myRoot.CFrame
-        
-        for _, part in pairs(myChar:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-        
-        local bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        bv.Velocity = Vector3.zero
-        bv.Parent = myRoot
-        
-        myRoot.CFrame = targetRoot.CFrame
-        
-        task.wait(0.05)
-        bv.Velocity = Vector3.new(math.random(-100, 100), 200, math.random(-100, 100))
-        
-        task.wait(0.15)
-        
-        if bv and bv.Parent then
-            bv:Destroy()
-        end
-        
-        task.wait(0.1)
-        myRoot.CFrame = originalPos
-        
-        for _, part in pairs(myChar:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-        
-        Library:Notify('Flinged ' .. selectedPlayer.Name .. '!', 2)
+    end
+})
+
+-- ═══════════════════════════════════════
+-- 🎯 COMBAT TAB
+-- ═══════════════════════════════════════
+
+local hitboxEnabled = false
+local hitboxSize = 10
+local hitboxTransparency = 0.7
+
+Tabs.Combat:AddParagraph({
+    Title = "Hitbox Expander",
+    Content = "Make enemy hitboxes bigger for easier hits"
+})
+
+local HitboxToggle = Tabs.Combat:AddToggle("HitboxToggle", {
+    Title = "Hitbox Expander",
+    Description = "Expand player hitboxes",
+    Default = false,
+    Callback = function(Value)
+        hitboxEnabled = Value
+        Fluent:Notify({
+            Title = Value and "Hitbox ON" or "Hitbox OFF",
+            Content = "",
+            Duration = 2
+        })
+    end
+})
+
+local HitboxSizeSlider = Tabs.Combat:AddSlider("HitboxSize", {
+    Title = "Hitbox Size",
+    Description = "Size of expanded hitboxes",
+    Default = 10,
+    Min = 5,
+    Max = 25,
+    Rounding = 0,
+    Callback = function(Value)
+        hitboxSize = Value
+    end
+})
+
+local HitboxTransSlider = Tabs.Combat:AddSlider("HitboxTrans", {
+    Title = "Hitbox Transparency",
+    Description = "Visibility of hitboxes",
+    Default = 0.7,
+    Min = 0,
+    Max = 1,
+    Rounding = 1,
+    Callback = function(Value)
+        hitboxTransparency = Value
     end
 })
 
 -- ═══════════════════════════════════════
 -- 👁️ VISUAL TAB
 -- ═══════════════════════════════════════
-local ESPBox = Tabs.Visual:AddLeftGroupbox('ESP Settings')
 
-ESPBox:AddToggle('ESPToggle', {
-    Text = 'Enable ESP',
+Tabs.Visual:AddParagraph({
+    Title = "ESP System",
+    Content = "See players through walls with health and distance"
+})
+
+local ESPToggle = Tabs.Visual:AddToggle("ESPToggle", {
+    Title = "Enable ESP",
+    Description = "See all players through walls",
     Default = false,
     Callback = function(Value)
         espEnabled = Value
         updateAllESP()
-        Library:Notify('ESP ' .. (Value and 'ON' or 'OFF'), 2)
+        Fluent:Notify({
+            Title = Value and "ESP ON" or "ESP OFF",
+            Content = "",
+            Duration = 2
+        })
     end
 })
 
-ESPBox:AddToggle('ShowHealth', {
-    Text = 'Show Health',
+local ShowHealthToggle = Tabs.Visual:AddToggle("ShowHealth", {
+    Title = "Show Health",
+    Description = "Display player health",
     Default = true,
     Callback = function(Value)
         espConfig.showHealth = Value
@@ -559,8 +757,9 @@ ESPBox:AddToggle('ShowHealth', {
     end
 })
 
-ESPBox:AddToggle('ShowDistance', {
-    Text = 'Show Distance',
+local ShowDistanceToggle = Tabs.Visual:AddToggle("ShowDistance", {
+    Title = "Show Distance",
+    Description = "Display distance to players",
     Default = true,
     Callback = function(Value)
         espConfig.showDistance = Value
@@ -572,56 +771,11 @@ ESPBox:AddToggle('ShowDistance', {
     end
 })
 
-ESPBox:AddLabel('Fill Color'):AddColorPicker('ESPFillColor', {
-    Default = Color3.fromRGB(255, 0, 0),
-    Title = 'ESP Fill Color',
-    Transparency = 0,
-    Callback = function(Value)
-        espConfig.fillColor = Value
-        updateAllESP()
-    end
-})
+Tabs.Visual:AddSection("Lighting")
 
-ESPBox:AddLabel('Outline Color'):AddColorPicker('ESPOutlineColor', {
-    Default = Color3.fromRGB(255, 255, 255),
-    Title = 'ESP Outline Color',
-    Transparency = 0,
-    Callback = function(Value)
-        espConfig.outlineColor = Value
-        updateAllESP()
-    end
-})
-
-ESPBox:AddSlider('ESPFillTrans', {
-    Text = 'Fill Transparency',
-    Default = 0.5,
-    Min = 0,
-    Max = 1,
-    Rounding = 1,
-    Compact = false,
-    Callback = function(Value)
-        espConfig.fillTransparency = Value
-        updateAllESP()
-    end
-})
-
-ESPBox:AddSlider('ESPOutlineTrans', {
-    Text = 'Outline Transparency',
-    Default = 0,
-    Min = 0,
-    Max = 1,
-    Rounding = 1,
-    Compact = false,
-    Callback = function(Value)
-        espConfig.outlineTransparency = Value
-        updateAllESP()
-    end
-})
-
-local LightBox = Tabs.Visual:AddRightGroupbox('Lighting')
-
-LightBox:AddToggle('Fullbright', {
-    Text = 'Fullbright',
+local FullbrightToggle = Tabs.Visual:AddToggle("Fullbright", {
+    Title = "Fullbright",
+    Description = "Remove shadows and darkness",
     Default = false,
     Callback = function(Value)
         local Lighting = game:GetService("Lighting")
@@ -630,91 +784,53 @@ LightBox:AddToggle('Fullbright', {
             Lighting.ClockTime = 14
             Lighting.FogEnd = 100000
             Lighting.GlobalShadows = false
+            Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
         else
             Lighting.Brightness = 1
             Lighting.ClockTime = 12
             Lighting.GlobalShadows = true
+            Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 70)
         end
-        Library:Notify('Fullbright ' .. (Value and 'ON' or 'OFF'), 2)
-    end
-})
-
--- ═══════════════════════════════════════
--- 🎯 COMBAT TAB
--- ═══════════════════════════════════════
-local HitboxBox = Tabs.Combat:AddLeftGroupbox('Hitbox Expander')
-
-local hitboxEnabled = false
-local hitboxSize = 10
-local hitboxColor = Color3.fromRGB(255, 0, 0)
-local hitboxTransparency = 0.7
-
-HitboxBox:AddToggle('HitboxToggle', {
-    Text = 'Hitbox Expander',
-    Default = false,
-    Callback = function(Value)
-        hitboxEnabled = Value
-        Library:Notify('Hitbox ' .. (Value and 'ON' or 'OFF'), 2)
-    end
-})
-
-HitboxBox:AddSlider('HitboxSize', {
-    Text = 'Hitbox Size',
-    Default = 10,
-    Min = 5,
-    Max = 25,
-    Rounding = 0,
-    Compact = false,
-    Callback = function(Value)
-        hitboxSize = Value
-    end
-})
-
-HitboxBox:AddLabel('Hitbox Color'):AddColorPicker('HitboxColor', {
-    Default = Color3.fromRGB(255, 0, 0),
-    Title = 'Hitbox Color',
-    Transparency = 0.7,
-    Callback = function(Value)
-        hitboxColor = Value
-    end
-})
-
-HitboxBox:AddSlider('HitboxTrans', {
-    Text = 'Transparency',
-    Default = 0.7,
-    Min = 0,
-    Max = 1,
-    Rounding = 1,
-    Compact = false,
-    Callback = function(Value)
-        hitboxTransparency = Value
+        Fluent:Notify({
+            Title = Value and "Fullbright ON" or "Fullbright OFF",
+            Content = "",
+            Duration = 2
+        })
     end
 })
 
 -- ═══════════════════════════════════════
 -- ⚙️ SETTINGS TAB
 -- ═══════════════════════════════════════
-local MenuGroup = Tabs.Settings:AddLeftGroupbox('Menu')
-MenuGroup:AddButton('Unload', function() Library:Unload() end)
-MenuGroup:AddLabel('Menu bind'):AddKeyPicker('MenuKeybind', { Default = 'RightShift', NoUI = true, Text = 'Menu keybind' })
 
-Library.ToggleKeybind = Options.MenuKeybind
+Tabs.Settings:AddParagraph({
+    Title = "GF HUB Settings",
+    Content = "Configure your hub experience"
+})
 
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
+Tabs.Settings:AddButton({
+    Title = "Unload Script",
+    Description = "Remove GF HUB completely",
+    Callback = function()
+        Fluent:Destroy()
+    end
+})
 
-ThemeManager:SetFolder('GFHub')
-SaveManager:SetFolder('GFHub/configs')
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:SetLibrary(Fluent)
 
+InterfaceManager:SetFolder("GFHub")
+SaveManager:SetFolder("GFHub/configs")
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
-ThemeManager:ApplyToTab(Tabs.Settings)
 
-local CreditsBox = Tabs.Settings:AddRightGroupbox('Credits')
-CreditsBox:AddLabel('━━━━━━━━━━━━━━━━━━')
-CreditsBox:AddLabel('👤 Created by: Gael Fonzar')
-CreditsBox:AddLabel('📦 Version: 3.0 - Linoria UI')
-CreditsBox:AddLabel('✅ Status: Loaded')
-CreditsBox:AddLabel('━━━━━━━━━━━━━━━━━━')
+Tabs.Settings:AddSection("Credits")
+
+Tabs.Settings:AddParagraph({
+    Title = "👤 Created by: Gael Fonzar",
+    Content = "Version: 3.0\nUI: Fluent Library\nStatus: ✅ Loaded"
+})
 
 -- ═══════════════════════════════════════
 -- 🔄 GAME LOOPS
@@ -754,19 +870,13 @@ connections.Speed = RunService.Heartbeat:Connect(function()
 end)
 
 -- Noclip
-local noclipTimer = 0
-connections.Noclip = RunService.Stepped:Connect(function(_, deltaTime)
+connections.Noclip = RunService.Stepped:Connect(function()
     if not noclipEnabled then return end
-    
-    noclipTimer = noclipTimer + deltaTime
-    if noclipTimer >= 0.1 then
-        noclipTimer = 0
-        local char = getChar()
-        if char then
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+    local char = getChar()
+    if char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
             end
         end
     end
@@ -781,7 +891,7 @@ connections.InfJump = UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Hitbox
+-- Hitbox Expander
 connections.Hitbox = RunService.Heartbeat:Connect(function()
     for _, target in pairs(Players:GetPlayers()) do
         if target ~= player and target.Character then
@@ -798,7 +908,7 @@ connections.Hitbox = RunService.Heartbeat:Connect(function()
                     
                     targetRoot.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
                     targetRoot.Transparency = hitboxTransparency
-                    targetRoot.Color = hitboxColor
+                    targetRoot.Color = Color3.fromRGB(255, 0, 0)
                     targetRoot.Material = Enum.Material.ForceField
                     targetRoot.CanCollide = false
                     
@@ -831,33 +941,39 @@ connections.ESPUpdate = RunService.RenderStepped:Connect(function()
     updateESPInfo()
 end)
 
--- Player Added/Removed Events
+-- Player Events
 Players.PlayerAdded:Connect(function(newPlayer)
     task.wait(1)
     if espEnabled and newPlayer ~= player then
         createESP(newPlayer)
     end
-    Options.PlayerSelect:SetValues(getPlayerList())
+    PlayerDropdown:SetValues(getPlayerList())
 end)
 
 Players.PlayerRemoving:Connect(function(removedPlayer)
     removeESP(removedPlayer)
-    Options.PlayerSelect:SetValues(getPlayerList())
+    PlayerDropdown:SetValues(getPlayerList())
 end)
 
--- Character Added Events
+-- Character Respawn
 player.CharacterAdded:Connect(function(char)
     task.wait(1)
-    -- Reapply speed if enabled
+    
+    -- Reapply speed
     if speedEnabled then
         local hum = char:FindFirstChildOfClass("Humanoid")
         if hum then
             hum.WalkSpeed = walkSpeed
         end
     end
+    
+    -- Reapply bambi if enabled
+    if bambiEnabled then
+        setupBambi()
+    end
 end)
 
--- Cleanup on script unload
+-- Cleanup Function
 local function cleanup()
     -- Disconnect all connections
     for name, connection in pairs(connections) do
@@ -871,7 +987,7 @@ local function cleanup()
         removeESP(target)
     end
     
-    -- Reset character properties
+    -- Reset character
     local char = getChar()
     if char then
         local hum = char:FindFirstChildOfClass("Humanoid")
@@ -882,6 +998,12 @@ local function cleanup()
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
+                part.Massless = false
+                if part.Name ~= "HumanoidRootPart" then
+                    part.Transparency = 0
+                end
+            elseif part:IsA("Decal") or part:IsA("Texture") then
+                part.Transparency = 0
             end
         end
         
@@ -889,6 +1011,8 @@ local function cleanup()
         if root then
             if root:FindFirstChild("GF_Fly") then root.GF_Fly:Destroy() end
             if root:FindFirstChild("GF_Gyro") then root.GF_Gyro:Destroy() end
+            root.Size = Vector3.new(2, 2, 1)
+            root.Transparency = 1
         end
     end
     
@@ -913,17 +1037,33 @@ local function cleanup()
     Lighting.Brightness = 1
     Lighting.ClockTime = 12
     Lighting.GlobalShadows = true
+    Lighting.FogEnd = 100000
+    Lighting.OutdoorAmbient = Color3.fromRGB(70, 70, 70)
     
-    Library:Notify('GF Hub v3.0 unloaded successfully!', 3)
+    Fluent:Notify({
+        Title = "👋 GF HUB Unloaded",
+        Content = "All features have been disabled",
+        Duration = 3
+    })
 end
 
--- Register cleanup
-Library:OnUnload(cleanup)
+-- Register cleanup on window destroy
+Window:OnUnload(cleanup)
+
+-- Save settings
+SaveManager:IgnoreThemeSettings()
+SaveManager:LoadAutoloadConfig()
 
 -- Final notification
-Library:Notify('🎮 GF Hub v3.0 loaded successfully!', 5)
-print('═══════════════════════════════════════')
-print('🎮 GF Hub v3.0 - Loaded')
-print('Created by: Gael Fonzar')
-print('Press RightShift to toggle menu')
-print('═══════════════════════════════════════')
+Fluent:Notify({
+    Title = "🎮 GF HUB v3.0",
+    Content = "Successfully loaded!\nPress RightShift to toggle",
+    Duration = 5
+})
+
+print("═══════════════════════════════════════")
+print("🎮 GF HUB v3.0 - Successfully Loaded!")
+print("Created by: Gael Fonzar")
+print("UI: Fluent Library")
+print("Press RightShift to open/close menu")
+print("═══════════════════════════════════════")
