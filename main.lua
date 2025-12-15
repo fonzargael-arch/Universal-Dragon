@@ -3,11 +3,73 @@
     🎮 GF HUB - Universal Script
     ═══════════════════════════════════════
     Created by: Gael Fonzar
-    Version: 1.0
+    Version: 2.0 Enhanced
     ═══════════════════════════════════════
 ]]
 
--- Load Rayfield Library
+-- Intro Animation
+local IntroGui = Instance.new("ScreenGui")
+IntroGui.Name = "GFIntro"
+IntroGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+IntroGui.Parent = game:GetService("CoreGui")
+
+local IntroFrame = Instance.new("Frame")
+IntroFrame.Size = UDim2.new(1, 0, 1, 0)
+IntroFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+IntroFrame.BorderSizePixel = 0
+IntroFrame.Parent = IntroGui
+
+local IntroText = Instance.new("TextLabel")
+IntroText.Size = UDim2.new(0, 400, 0, 100)
+IntroText.Position = UDim2.new(0.5, -200, 0.5, -50)
+IntroText.BackgroundTransparency = 1
+IntroText.Text = "GF Hub"
+IntroText.TextColor3 = Color3.fromRGB(255, 255, 255)
+IntroText.Font = Enum.Font.GothamBold
+IntroText.TextSize = 60
+IntroText.TextTransparency = 1
+IntroText.Parent = IntroFrame
+
+local IntroSubText = Instance.new("TextLabel")
+IntroSubText.Size = UDim2.new(0, 400, 0, 30)
+IntroSubText.Position = UDim2.new(0.5, -200, 0.5, 40)
+IntroSubText.BackgroundTransparency = 1
+IntroSubText.Text = "Presents..."
+IntroSubText.TextColor3 = Color3.fromRGB(200, 200, 200)
+IntroSubText.Font = Enum.Font.Gotham
+IntroSubText.TextSize = 24
+IntroSubText.TextTransparency = 1
+IntroSubText.Parent = IntroFrame
+
+-- Animate intro
+game:GetService("TweenService"):Create(IntroText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    TextTransparency = 0
+}):Play()
+
+wait(0.5)
+
+game:GetService("TweenService"):Create(IntroSubText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    TextTransparency = 0
+}):Play()
+
+wait(2)
+
+game:GetService("TweenService"):Create(IntroFrame, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    BackgroundTransparency = 1
+}):Play()
+
+game:GetService("TweenService"):Create(IntroText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    TextTransparency = 1
+}):Play()
+
+game:GetService("TweenService"):Create(IntroSubText, TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+    TextTransparency = 1
+}):Play()
+
+wait(1)
+IntroGui:Destroy()
+
+-- Load Rayfield Library with custom theme
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- Services
@@ -22,6 +84,12 @@ local mouse = player:GetMouse()
 local selectedPlayer = nil
 local espEnabled = false
 local espObjects = {}
+local espConfig = {
+    fillColor = Color3.fromRGB(255, 0, 0),
+    outlineColor = Color3.fromRGB(255, 255, 255),
+    fillTransparency = 0.5,
+    outlineTransparency = 0
+}
 
 -- Helper Functions
 local function getChar()
@@ -47,20 +115,33 @@ local function notify(title, content, duration)
     })
 end
 
--- ESP System
+-- Enhanced ESP System
 local function createESP(target)
-    if not target.Character then return end
+    if not target or not target.Character then return end
+    
+    -- Remove old ESP if exists
+    if espObjects[target.Name] then
+        espObjects[target.Name]:Destroy()
+    end
     
     local highlight = Instance.new("Highlight")
     highlight.Name = "GF_ESP"
     highlight.Adornee = target.Character
-    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0
+    highlight.FillColor = espConfig.fillColor
+    highlight.OutlineColor = espConfig.outlineColor
+    highlight.FillTransparency = espConfig.fillTransparency
+    highlight.OutlineTransparency = espConfig.outlineTransparency
     highlight.Parent = target.Character
     
     espObjects[target.Name] = highlight
+    
+    -- Reconnect on respawn
+    target.CharacterAdded:Connect(function(char)
+        if espEnabled then
+            task.wait(0.5)
+            createESP(target)
+        end
+    end)
 end
 
 local function removeESP(target)
@@ -74,9 +155,7 @@ local function updateESP()
     for _, target in pairs(Players:GetPlayers()) do
         if target ~= player then
             if espEnabled then
-                if not espObjects[target.Name] then
-                    createESP(target)
-                end
+                createESP(target)
             else
                 removeESP(target)
             end
@@ -104,10 +183,10 @@ local function getPlayerByName(name)
     return nil
 end
 
--- Create Window
+-- Create Window with Black Theme
 local Window = Rayfield:CreateWindow({
     Name = "🎮 GF Hub",
-    LoadingTitle = "GF Hub Loading...",
+    LoadingTitle = "GF Hub",
     LoadingSubtitle = "by Gael Fonzar",
     ConfigurationSaving = {
         Enabled = true,
@@ -117,7 +196,12 @@ local Window = Rayfield:CreateWindow({
     Discord = {
         Enabled = false
     },
-    KeySystem = false
+    KeySystem = false,
+    Theme = {
+        Background = Color3.fromRGB(15, 15, 15),
+        Topbar = Color3.fromRGB(20, 20, 20),
+        Shadow = Color3.fromRGB(0, 0, 0)
+    }
 })
 
 -- ═══════════════════════════════════════
@@ -333,7 +417,7 @@ local FlingButton = PlayersTab:CreateButton({
 -- ═══════════════════════════════════════
 local VisualTab = Window:CreateTab("👁️ Visual", "eye")
 
-local VisualSection = VisualTab:CreateSection("Visual Features")
+local ESPSection = VisualTab:CreateSection("ESP Settings")
 
 local ESPToggle = VisualTab:CreateToggle({
     Name = "ESP (Highlight)",
@@ -345,6 +429,52 @@ local ESPToggle = VisualTab:CreateToggle({
         notify("ESP", Value and "Activated" or "Deactivated")
     end
 })
+
+local ESPFillColorPicker = VisualTab:CreateColorPicker({
+    Name = "ESP Fill Color",
+    Color = Color3.fromRGB(255, 0, 0),
+    Flag = "ESPFillColor",
+    Callback = function(Value)
+        espConfig.fillColor = Value
+        updateESP()
+    end
+})
+
+local ESPOutlineColorPicker = VisualTab:CreateColorPicker({
+    Name = "ESP Outline Color",
+    Color = Color3.fromRGB(255, 255, 255),
+    Flag = "ESPOutlineColor",
+    Callback = function(Value)
+        espConfig.outlineColor = Value
+        updateESP()
+    end
+})
+
+local ESPFillTransSlider = VisualTab:CreateSlider({
+    Name = "ESP Fill Transparency",
+    Range = {0, 1},
+    Increment = 0.1,
+    CurrentValue = 0.5,
+    Flag = "ESPFillTrans",
+    Callback = function(Value)
+        espConfig.fillTransparency = Value
+        updateESP()
+    end
+})
+
+local ESPOutlineTransSlider = VisualTab:CreateSlider({
+    Name = "ESP Outline Transparency",
+    Range = {0, 1},
+    Increment = 0.1,
+    CurrentValue = 0,
+    Flag = "ESPOutlineTrans",
+    Callback = function(Value)
+        espConfig.outlineTransparency = Value
+        updateESP()
+    end
+})
+
+local LightingSection = VisualTab:CreateSection("Lighting")
 
 local FullbrightToggle = VisualTab:CreateToggle({
     Name = "Fullbright",
@@ -372,10 +502,12 @@ local FullbrightToggle = VisualTab:CreateToggle({
 -- ═══════════════════════════════════════
 local CombatTab = Window:CreateTab("🎯 Combat", "shield")
 
-local CombatSection = CombatTab:CreateSection("Combat Features")
+local HitboxSection = CombatTab:CreateSection("Hitbox Settings")
 
 local hitboxEnabled = false
 local hitboxSize = 10
+local hitboxColor = Color3.fromRGB(255, 0, 0)
+local hitboxTransparency = 0.7
 
 local HitboxToggle = CombatTab:CreateToggle({
     Name = "Hitbox Expander",
@@ -398,6 +530,26 @@ local HitboxSlider = CombatTab:CreateSlider({
     end
 })
 
+local HitboxColorPicker = CombatTab:CreateColorPicker({
+    Name = "Hitbox Color",
+    Color = Color3.fromRGB(255, 0, 0),
+    Flag = "HitboxColor",
+    Callback = function(Value)
+        hitboxColor = Value
+    end
+})
+
+local HitboxTransSlider = CombatTab:CreateSlider({
+    Name = "Hitbox Transparency",
+    Range = {0, 1},
+    Increment = 0.1,
+    CurrentValue = 0.7,
+    Flag = "HitboxTrans",
+    Callback = function(Value)
+        hitboxTransparency = Value
+    end
+})
+
 -- ═══════════════════════════════════════
 -- ⚙️ SETTINGS TAB
 -- ═══════════════════════════════════════
@@ -405,20 +557,13 @@ local SettingsTab = Window:CreateTab("⚙️ Settings", "settings")
 
 local SettingsSection = SettingsTab:CreateSection("GUI Settings")
 
-local ThemeColorPicker = SettingsTab:CreateColorPicker({
-    Name = "Theme Color",
-    Color = Color3.fromRGB(255, 0, 0),
-    Flag = "ThemeColor",
-    Callback = function(Value)
-        notify("Theme", "Color changed!")
-    end
-})
-
 local CreditsSection = SettingsTab:CreateSection("Credits")
 
-local CreditsLabel = SettingsTab:CreateLabel("Created by: Gael Fonzar")
-local VersionLabel = SettingsTab:CreateLabel("Version: 1.0")
-local StatusLabel = SettingsTab:CreateLabel("Status: ✅ Loaded Successfully")
+local CreditsLabel = SettingsTab:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
+local CreatorLabel = SettingsTab:CreateLabel("👤 Created by: Gael Fonzar")
+local VersionLabel = SettingsTab:CreateLabel("📦 Version: 2.0 Enhanced")
+local StatusLabel = SettingsTab:CreateLabel("✅ Status: Loaded Successfully")
+local CreditsLabel2 = SettingsTab:CreateLabel("━━━━━━━━━━━━━━━━━━━━")
 
 -- ═══════════════════════════════════════
 -- 🔄 GAME LOOPS
@@ -496,33 +641,65 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- Hitbox Expander
+-- Enhanced Hitbox Expander with Sphere
 RunService.Heartbeat:Connect(function()
     if hitboxEnabled then
         for _, target in pairs(Players:GetPlayers()) do
             if target ~= player and target.Character then
                 local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
                 if targetRoot then
+                    -- Size expansion
                     targetRoot.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-                    targetRoot.Transparency = 0.7
+                    targetRoot.Transparency = hitboxTransparency
+                    targetRoot.Color = hitboxColor
+                    targetRoot.Material = Enum.Material.ForceField
                     targetRoot.CanCollide = false
+                    
+                    -- Create sphere shape if doesn't exist
+                    if not targetRoot:FindFirstChild("GF_HitboxMesh") then
+                        local mesh = Instance.new("SpecialMesh")
+                        mesh.Name = "GF_HitboxMesh"
+                        mesh.MeshType = Enum.MeshType.Sphere
+                        mesh.Parent = targetRoot
+                    end
+                end
+            end
+        end
+    else
+        -- Restore original hitboxes
+        for _, target in pairs(Players:GetPlayers()) do
+            if target ~= player and target.Character then
+                local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+                if targetRoot then
+                    targetRoot.Size = Vector3.new(2, 2, 1)
+                    targetRoot.Transparency = 1
+                    targetRoot.CanCollide = true
+                    targetRoot.Material = Enum.Material.Plastic
+                    
+                    local mesh = targetRoot:FindFirstChild("GF_HitboxMesh")
+                    if mesh then
+                        mesh:Destroy()
+                    end
                 end
             end
         end
     end
 end)
 
--- ESP Update
-Players.PlayerAdded:Connect(function()
+-- ESP Update on player events
+Players.PlayerAdded:Connect(function(newPlayer)
     if espEnabled then
-        updateESP()
+        newPlayer.CharacterAdded:Connect(function()
+            task.wait(0.5)
+            if espEnabled then
+                createESP(newPlayer)
+            end
+        end)
     end
 end)
 
-Players.PlayerRemoving:Connect(function()
-    if espEnabled then
-        updateESP()
-    end
+Players.PlayerRemoving:Connect(function(removedPlayer)
+    removeESP(removedPlayer)
 end)
 
 -- ═══════════════════════════════════════
@@ -530,6 +707,7 @@ end)
 -- ═══════════════════════════════════════
 notify("GF Hub", "Loaded Successfully! ✅", 5)
 print("═══════════════════════════════════")
-print("🎮 GF Hub Loaded!")
+print("🎮 GF Hub Enhanced Edition Loaded!")
 print("Created by: Gael Fonzar")
+print("Version: 2.0")
 print("═══════════════════════════════════")
