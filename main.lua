@@ -959,10 +959,14 @@ fpsCounter.Visible = false
 fpsCounter.Parent = gui
 fpsCounter.ZIndex = 999999
 
-Instance.new("UICorner", fpsCounter).CornerRadius = UDim.new(0, 6)
-local fpsStroke = Instance.new("UIStroke", fpsCounter)
+local fpsCorner = Instance.new("UICorner")
+fpsCorner.CornerRadius = UDim.new(0, 6)
+fpsCorner.Parent = fpsCounter
+
+local fpsStroke = Instance.new("UIStroke")
 fpsStroke.Color = Color3.fromRGB(200, 0, 0)
 fpsStroke.Thickness = 1
+fpsStroke.Parent = fpsCounter
 
 -- Actualizar FPS (optimizado)
 local lastTime = tick()
@@ -998,10 +1002,14 @@ icon.Active = true
 icon.Draggable = false
 icon.ZIndex = 999999
 
-Instance.new("UICorner", icon).CornerRadius = UDim.new(1, 0)
-local iconStroke = Instance.new("UIStroke", icon)
+local iconCorner = Instance.new("UICorner")
+iconCorner.CornerRadius = UDim.new(1, 0)
+iconCorner.Parent = icon
+
+local iconStroke = Instance.new("UIStroke")
 iconStroke.Color = Color3.fromRGB(200, 0, 0)
 iconStroke.Thickness = 2
+iconStroke.Parent = icon
 
 -- Panel principal (más limpio)
 local frame = Instance.new("Frame")
@@ -1014,27 +1022,35 @@ frame.Draggable = false
 frame.Parent = gui
 frame.ZIndex = 999999
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 14)
-local frameBorder = Instance.new("UIStroke", frame)
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 14)
+frameCorner.Parent = frame
+
+local frameBorder = Instance.new("UIStroke")
 frameBorder.Color = Color3.fromRGB(200, 0, 0)
 frameBorder.Thickness = 2
+frameBorder.Parent = frame
 
 -- TopBar
-local topBar = Instance.new("Frame", frame)
+local topBar = Instance.new("Frame")
 topBar.Size = UDim2.new(1, 0, 0, 45)
 topBar.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 topBar.BorderSizePixel = 0
 topBar.Active = true
 topBar.ZIndex = 999999
+topBar.Parent = frame
 
-Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 14)
+local topCorner = Instance.new("UICorner")
+topCorner.CornerRadius = UDim.new(0, 14)
+topCorner.Parent = topBar
 
-local topFix = Instance.new("Frame", topBar)
+local topFix = Instance.new("Frame")
 topFix.Size = UDim2.new(1, 0, 0, 15)
 topFix.Position = UDim2.new(0, 0, 1, -15)
 topFix.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 topFix.BorderSizePixel = 0
 topFix.ZIndex = 999999
+topFix.Parent = topBar
 
 local logo = Instance.new("TextLabel", topBar)
 logo.Size = UDim2.new(0, 35, 0, 35)
@@ -1096,7 +1112,7 @@ Players.PlayerRemoving:Connect(function()
     serverInfo.Text = "🌐 " .. #Players:GetPlayers() .. " Players"
 end)
 
-local closeBtn = Instance.new("TextButton", topBar)
+local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 32, 0, 32)
 closeBtn.Position = UDim2.new(1, -38, 0.5, -16)
 closeBtn.Text = "✖"
@@ -1106,8 +1122,11 @@ closeBtn.TextSize = 16
 closeBtn.Font = Enum.Font.Code
 closeBtn.AutoButtonColor = false
 closeBtn.ZIndex = 999999
+closeBtn.Parent = topBar
 
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
+local closeBtnCorner = Instance.new("UICorner")
+closeBtnCorner.CornerRadius = UDim.new(0, 6)
+closeBtnCorner.Parent = closeBtn
 
 closeBtn.MouseEnter:Connect(function()
     closeBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -1301,12 +1320,13 @@ tabs["Movement"].page.Visible = true
 
 -- Helper functions UI (optimizados)
 local function createSection(parent, title)
-    local section = Instance.new("Frame", parent)
+    local section = Instance.new("Frame")
     section.Size = UDim2.new(1, 0, 0, 32)
     section.BackgroundTransparency = 1
     section.ZIndex = 999999
+    section.Parent = parent
     
-    local label = Instance.new("TextLabel", section)
+    local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = title
@@ -1315,28 +1335,35 @@ local function createSection(parent, title)
     label.TextSize = 15
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 999999
+    label.Parent = section
     
-    local line = Instance.new("Frame", section)
+    local line = Instance.new("Frame")
     line.Size = UDim2.new(1, 0, 0, 2)
     line.Position = UDim2.new(0, 0, 1, -4)
     line.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
     line.BorderSizePixel = 0
     line.ZIndex = 999999
+    line.Parent = section
 end
 
 local function createToggle(parent, text, callback)
-    local container = Instance.new("Frame", parent)
+    local container = Instance.new("Frame")
     container.Size = UDim2.new(1, 0, 0, 42)
     container.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
     container.BorderSizePixel = 0
     container.ZIndex = 999999
+    container.Parent = parent
     
-    Instance.new("UICorner", container).CornerRadius = UDim.new(0, 8)
-    local stroke = Instance.new("UIStroke", container)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = container
+    
+    local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(200, 0, 0)
     stroke.Thickness = 1
+    stroke.Parent = container
     
-    local label = Instance.new("TextLabel", container)
+    local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -56, 1, 0)
     label.Position = UDim2.new(0, 12, 0, 0)
     label.BackgroundTransparency = 1
@@ -1346,25 +1373,32 @@ local function createToggle(parent, text, callback)
     label.TextSize = 13
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 999999
+    label.Parent = container
     
-    local toggle = Instance.new("TextButton", container)
+    local toggle = Instance.new("TextButton")
     toggle.Size = UDim2.new(0, 42, 0, 24)
     toggle.Position = UDim2.new(1, -50, 0.5, -12)
     toggle.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     toggle.Text = ""
     toggle.AutoButtonColor = false
     toggle.ZIndex = 999999
+    toggle.Parent = container
     
-    Instance.new("UICorner", toggle).CornerRadius = UDim.new(1, 0)
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(1, 0)
+    toggleCorner.Parent = toggle
     
-    local indicator = Instance.new("Frame", toggle)
+    local indicator = Instance.new("Frame")
     indicator.Size = UDim2.new(0, 18, 0, 18)
     indicator.Position = UDim2.new(0, 3, 0.5, -9)
     indicator.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     indicator.BorderSizePixel = 0
     indicator.ZIndex = 999999
+    indicator.Parent = toggle
     
-    Instance.new("UICorner", indicator).CornerRadius = UDim.new(1, 0)
+    local indicatorCorner = Instance.new("UICorner")
+    indicatorCorner.CornerRadius = UDim.new(1, 0)
+    indicatorCorner.Parent = indicator
     
     local enabled = false
     toggle.MouseButton1Click:Connect(function()
@@ -1379,7 +1413,7 @@ local function createToggle(parent, text, callback)
 end
 
 local function createButton(parent, text, callback)
-    local btn = Instance.new("TextButton", parent)
+    local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, 0, 0, 38)
     btn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1388,11 +1422,16 @@ local function createButton(parent, text, callback)
     btn.Text = text
     btn.AutoButtonColor = false
     btn.ZIndex = 999999
+    btn.Parent = parent
     
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-    local stroke = Instance.new("UIStroke", btn)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(200, 0, 0)
     stroke.Thickness = 2
+    stroke.Parent = btn
     
     btn.MouseEnter:Connect(function()
         TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(240, 20, 20)}):Play()
@@ -1406,18 +1445,23 @@ local function createButton(parent, text, callback)
 end
 
 local function createSlider(parent, text, min, max, default, callback)
-    local container = Instance.new("Frame", parent)
+    local container = Instance.new("Frame")
     container.Size = UDim2.new(1, 0, 0, 56)
     container.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
     container.BorderSizePixel = 0
     container.ZIndex = 999999
+    container.Parent = parent
     
-    Instance.new("UICorner", container).CornerRadius = UDim.new(0, 8)
-    local stroke = Instance.new("UIStroke", container)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = container
+    
+    local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(200, 0, 0)
     stroke.Thickness = 1
+    stroke.Parent = container
     
-    local label = Instance.new("TextLabel", container)
+    local label = Instance.new("TextLabel")
     label.Size = UDim2.new(1, -24, 0, 18)
     label.Position = UDim2.new(0, 12, 0, 6)
     label.BackgroundTransparency = 1
@@ -1427,8 +1471,9 @@ local function createSlider(parent, text, min, max, default, callback)
     label.TextSize = 12
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 999999
+    label.Parent = container
     
-    local valueLabel = Instance.new("TextLabel", container)
+    local valueLabel = Instance.new("TextLabel")
     valueLabel.Size = UDim2.new(0, 50, 0, 18)
     valueLabel.Position = UDim2.new(1, -62, 0, 6)
     valueLabel.BackgroundTransparency = 1
@@ -1438,23 +1483,30 @@ local function createSlider(parent, text, min, max, default, callback)
     valueLabel.TextSize = 12
     valueLabel.TextXAlignment = Enum.TextXAlignment.Right
     valueLabel.ZIndex = 999999
+    valueLabel.Parent = container
     
-    local track = Instance.new("Frame", container)
+    local track = Instance.new("Frame")
     track.Size = UDim2.new(1, -24, 0, 6)
     track.Position = UDim2.new(0, 12, 0, 34)
     track.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     track.BorderSizePixel = 0
     track.ZIndex = 999999
+    track.Parent = container
     
-    Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(1, 0)
+    trackCorner.Parent = track
     
-    local fill = Instance.new("Frame", track)
+    local fill = Instance.new("Frame")
     fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
     fill.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
     fill.BorderSizePixel = 0
     fill.ZIndex = 999999
+    fill.Parent = track
     
-    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(1, 0)
+    fillCorner.Parent = fill
     
     local dragging = false
     track.InputBegan:Connect(function(input)
@@ -2789,7 +2841,9 @@ infoLabel.TextYAlignment = Enum.TextXAlignment.Top
 infoLabel.TextWrapped = true
 
 --// Carga completa
-notify("🐉 Dragon Red v7", "Loaded by Gael Fonzar • RightShift to toggle", 3)
+notify("🐉 Dragon Red v7", "Loaded by Krxtopher • RightShift to toggle", 3)
 print("═══════════════════════════════════")
 print("🐉 DRAGON RED v7 - Universal Edition")
-print("✅ Created by: GF Hub")
+print("✅ Created by: Krxtopher")
+print("⌨️ Press RightShift to toggle")
+print("═══════════════════════════════════")
