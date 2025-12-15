@@ -1,3 +1,4 @@
+
 --[[
     ═══════════════════════════════════════
     🎮 GF HUB - Universal Script
@@ -306,16 +307,27 @@ local function extremeFling(target)
     })
     
     local originalPos = myRoot.CFrame
+    local originalTargetCF = targetRoot.CFrame
     
-    -- Setup Bambi
+    -- Setup Bambi (tu personaje sin colisiones)
     setupBambi()
     
-    -- Teleport encima del jugador
-    myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 3, 0)
+    -- Desactivar colisiones del objetivo también
+    for _, part in pairs(target.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
     
-    task.wait(0.1)
+    -- Anclar tu HumanoidRootPart para que NO te muevas
+    myRoot.Anchored = true
     
-    -- Crear BodyVelocity para lanzar
+    -- Teleport TU personaje debajo del objetivo
+    myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, -3, 0)
+    
+    task.wait(0.15)
+    
+    -- Crear BodyVelocity en el OBJETIVO (no en ti)
     local bv = Instance.new("BodyVelocity")
     bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
     bv.Velocity = Vector3.new(
@@ -323,19 +335,41 @@ local function extremeFling(target)
         flingHeight, 
         math.random(-flingPower, flingPower)
     )
-    bv.Parent = myRoot
+    bv.Parent = targetRoot
     
-    -- Mantener presión por 0.3 segundos
-    task.wait(0.3)
+    -- Aplicar fuerza de rotación para más caos
+    local bg = Instance.new("BodyAngularVelocity")
+    bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bg.AngularVelocity = Vector3.new(
+        math.random(-50, 50),
+        math.random(-50, 50),
+        math.random(-50, 50)
+    )
+    bg.Parent = targetRoot
     
+    -- Mantener fuerza por 0.4 segundos
+    task.wait(0.4)
+    
+    -- Limpiar fuerzas del objetivo
     if bv and bv.Parent then
         bv:Destroy()
     end
+    if bg and bg.Parent then
+        bg:Destroy()
+    end
     
-    task.wait(0.2)
+    task.wait(0.1)
     
-    -- Volver a posición original
+    -- Desanclar y volver a tu posición
+    myRoot.Anchored = false
     myRoot.CFrame = originalPos
+    
+    -- Restaurar colisiones del objetivo
+    for _, part in pairs(target.Character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
     
     -- Reset Bambi si está desactivado
     if not bambiEnabled then
