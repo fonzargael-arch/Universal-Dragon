@@ -1,10 +1,10 @@
 --[[
     ═══════════════════════════════════════
-    🎮 GF HUB - Universal Script v4.0
+    🎮 GF HUB - Universal Script v4.1
     ═══════════════════════════════════════
     Created by: Gael Fonzar
     Theme: Black + Red Accent
-    Features: Bring Player, Kill Aura, Hit
+    Features: Bring Player (Mejorado), Kill Aura, Hit
     ═══════════════════════════════════════
 ]]
 
@@ -37,15 +37,16 @@ local espConfig = {
 local connections = {}
 local hitboxCache = {}
 
--- Bring Player Variables
+-- Bring Player Variables MEJORADAS
 local bringEnabled = false
-local bringLoop = false
-local bringSpeed = 0.5
+local bringConnection = nil
+local bringDistance = 3 -- Distancia del jugador traído
+local bringHeight = 0 -- Altura relativa
 
 -- Kill Aura Variables
 local killAuraEnabled = false
-local killAuraRange = 20
-local killAuraSpeed = 0.1
+local killAuraRange = 30 -- Aumentado
+local killAuraSpeed = 0.08
 
 -- Helper Functions
 local function getChar()
@@ -225,57 +226,77 @@ local function getPlayerByName(name)
     return nil
 end
 
--- BRING PLAYER TO YOU
-local function bringPlayer(target)
-    if not target or not target.Character then
-        Fluent:Notify({
-            Title = "❌ Error",
-            Content = "Player not found!",
-            Duration = 2
-        })
-        return
+-- NUEVO SISTEMA DE BRING MEJORADO
+local function startBringLoop()
+    if bringConnection then
+        bringConnection:Disconnect()
     end
     
-    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-    local myRoot = getRoot()
-    
-    if not targetRoot or not myRoot then return end
-    
-    -- Teleport player to you
-    targetRoot.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
-    
-    Fluent:Notify({
-        Title = "✅ Brought",
-        Content = target.Name .. " teleported to you!",
-        Duration = 2
-    })
-end
-
-local function startBringLoop()
-    bringLoop = true
-    
-    task.spawn(function()
-        while bringLoop and bringEnabled and selectedPlayer do
-            if selectedPlayer and selectedPlayer.Character then
-                local targetRoot = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
-                local myRoot = getRoot()
-                
-                if targetRoot and myRoot then
-                    targetRoot.CFrame = myRoot.CFrame * CFrame.new(0, 0, -3)
-                end
+    bringConnection = RunService.Heartbeat:Connect(function()
+        if not bringEnabled or not selectedPlayer then
+            if bringConnection then
+                bringConnection:Disconnect()
+                bringConnection = nil
             end
+            return
+        end
+        
+        local myRoot = getRoot()
+        if not myRoot or not selectedPlayer.Character then return end
+        
+        local targetRoot = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local targetHum = selectedPlayer.Character:FindFirstChildOfClass("Humanoid")
+        
+        if targetRoot and targetHum then
+            -- Calcular posición relativa delante del jugador
+            local offset = myRoot.CFrame.LookVector * bringDistance
+            local targetPos = myRoot.Position + offset + Vector3.new(0, bringHeight, 0)
             
-            task.wait(bringSpeed)
+            -- Teleportar al jugador constantemente
+            targetRoot.CFrame = CFrame.new(targetPos, myRoot.Position)
+            
+            -- Cancelar velocidad para evitar que se mueva
+            targetRoot.Velocity = Vector3.zero
+            targetRoot.RotVelocity = Vector3.zero
+            
+            -- Desactivar controles del jugador
+            if targetHum then
+                targetHum.PlatformStand = true
+                targetHum.Sit = false
+            end
         end
     end)
 end
 
 local function stopBringLoop()
-    bringLoop = false
     bringEnabled = false
+    
+    if bringConnection then
+        bringConnection:Disconnect()
+        bringConnection = nil
+    end
+    
+    -- Restaurar al jugador a mi posición antes de liberarlo
+    if selectedPlayer and selectedPlayer.Character then
+        local myRoot = getRoot()
+        local targetRoot = selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local targetHum = selectedPlayer.Character:FindFirstChildOfClass("Humanoid")
+        
+        if targetRoot and myRoot then
+            -- Teleportar a mi posición actual
+            local offset = myRoot.CFrame.LookVector * bringDistance
+            targetRoot.CFrame = CFrame.new(myRoot.Position + offset + Vector3.new(0, bringHeight, 0))
+            targetRoot.Velocity = Vector3.zero
+        end
+        
+        -- Reactivar controles
+        if targetHum then
+            targetHum.PlatformStand = false
+        end
+    end
 end
 
--- KILL AURA SYSTEM
+-- KILL AURA SYSTEM MEJORADO
 local function hitPlayer(target)
     if not target or not target.Character then return end
     
@@ -285,38 +306,44 @@ local function hitPlayer(target)
     
     if not targetRoot or not targetHum or not myRoot then return end
     
-    -- Check if in range
     local distance = (myRoot.Position - targetRoot.Position).Magnitude
     if distance > killAuraRange then return end
     
-    -- Method 1: Teleport behind and hit
-    local originalPos = myRoot.CFrame
-    myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 3)
-    
-    task.wait(0.05)
-    
-    -- Simulate punch/hit
-    local tool = player.Character:FindFirstChildOfClass("Tool")
-    if tool then
-        tool:Activate()
-    end
-    
-    task.wait(0.05)
-    myRoot.CFrame = originalPos
+    pcall(function()
+        local originalPos = myRoot.CFrame
+        
+        -- Teleportar detrás del jugador
+        myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 2)
+        
+        task.wait(0.03)
+        
+        -- Intentar activar herramienta
+        local tool = player.Character:FindFirstChildOfClass("Tool")
+        if tool and tool:FindFirstChild("Handle") then
+            tool:Activate()
+        end
+        
+        task.wait(0.03)
+        
+        -- Regresar a posición original
+        myRoot.CFrame = originalPos
+    end)
 end
 
 local function killAuraLoop()
     while killAuraEnabled do
-        for _, target in pairs(Players:GetPlayers()) do
-            if target ~= player and target.Character then
-                local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
-                local myRoot = getRoot()
-                
-                if targetRoot and myRoot then
-                    local distance = (myRoot.Position - targetRoot.Position).Magnitude
+        local myRoot = getRoot()
+        if myRoot then
+            for _, target in pairs(Players:GetPlayers()) do
+                if target ~= player and target.Character then
+                    local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
                     
-                    if distance <= killAuraRange then
-                        hitPlayer(target)
+                    if targetRoot then
+                        local distance = (myRoot.Position - targetRoot.Position).Magnitude
+                        
+                        if distance <= killAuraRange then
+                            hitPlayer(target)
+                        end
                     end
                 end
             end
@@ -328,31 +355,28 @@ end
 
 -- Create Window with Dark Theme
 local Window = Fluent:CreateWindow({
-    Title = "🎮 GF HUB v4.0",
-    SubTitle = "by Gael Fonzar",
+    Title = "🎮 GF HUB v4.1",
+    SubTitle = "by Gael Fonzar - Mejorado",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 480),
-    Acrylic = false, -- Disable for solid black
+    Acrylic = false,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightShift
 })
 
--- Apply Custom Dark Theme (Black + Red)
+-- Apply Custom Dark Theme
 pcall(function()
     local gui = game:GetService("CoreGui"):FindFirstChild("FluentUI") or player.PlayerGui:FindFirstChild("FluentUI")
     if gui then
         for _, obj in pairs(gui:GetDescendants()) do
-            -- Make background pure black
             if obj:IsA("Frame") or obj:IsA("ScrollingFrame") then
                 obj.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
             end
             
-            -- Make accent colors red
             if obj:IsA("TextButton") or obj:IsA("ImageButton") then
                 obj.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
             end
             
-            -- Red text accents
             if obj:IsA("TextLabel") and obj.Name:find("Title") then
                 obj.TextColor3 = Color3.fromRGB(255, 50, 50)
             end
@@ -375,8 +399,8 @@ local Tabs = {
 -- ═══════════════════════════════════════
 
 Tabs.Main:AddParagraph({
-    Title = "🎮 Welcome to GF HUB v4.0!",
-    Content = "Dark Theme Edition\n\nNew Features:\n• Bring Player to You\n• Kill Aura\n• One-Hit Kill\n• Black + Red Theme"
+    Title = "🎮 Welcome to GF HUB v4.1!",
+    Content = "Dark Theme Edition - MEJORADO\n\nNuevas mejoras:\n• Bring Player pegado constantemente\n• Hitbox más grande (30 studs)\n• Kill Aura optimizado\n• Correcciones de errores"
 })
 
 -- ═══════════════════════════════════════
@@ -487,8 +511,8 @@ Tabs.Movement:AddToggle("Noclip", {
 -- ═══════════════════════════════════════
 
 Tabs.Players:AddParagraph({
-    Title = "👥 Player Control",
-    Content = "Select and control other players"
+    Title = "👥 Player Control - MEJORADO",
+    Content = "El jugador se quedará pegado a ti sin importar qué haga"
 })
 
 local PlayerDropdown = Tabs.Players:AddDropdown("PlayerSelect", {
@@ -545,27 +569,11 @@ Tabs.Players:AddButton({
     end
 })
 
-Tabs.Players:AddSection("Bring Player")
-
-Tabs.Players:AddButton({
-    Title = "🧲 Bring Player Once",
-    Description = "Teleport player to you (one time)",
-    Callback = function()
-        if selectedPlayer then
-            bringPlayer(selectedPlayer)
-        else
-            Fluent:Notify({
-                Title = "❌ Error",
-                Content = "No player selected!",
-                Duration = 2
-            })
-        end
-    end
-})
+Tabs.Players:AddSection("Bring Player (MEJORADO)")
 
 local BringLoopToggle = Tabs.Players:AddToggle("BringLoop", {
-    Title = "🔄 Bring Player (Loop)",
-    Description = "Keep player near you",
+    Title = "🧲 Bring Player (Pegado)",
+    Description = "El jugador NO podrá escapar de ti",
     Default = false,
     Callback = function(Value)
         bringEnabled = Value
@@ -583,30 +591,42 @@ local BringLoopToggle = Tabs.Players:AddToggle("BringLoop", {
             
             Fluent:Notify({
                 Title = "🧲 Bring Loop ON",
-                Content = selectedPlayer.Name .. " stuck to you!",
-                Duration = 2
+                Content = selectedPlayer.Name .. " está pegado a ti!",
+                Duration = 3
             })
             startBringLoop()
         else
             stopBringLoop()
             Fluent:Notify({
-                Title = "Bring Loop OFF",
-                Content = "",
+                Title = "✅ Released",
+                Content = "Jugador liberado en tu posición",
                 Duration = 2
             })
         end
     end
 })
 
-Tabs.Players:AddSlider("BringSpeed", {
-    Title = "Bring Speed",
-    Description = "Lower = Faster updates",
-    Default = 0.5,
-    Min = 0.1,
-    Max = 2,
+Tabs.Players:AddSlider("BringDistance", {
+    Title = "Distancia del jugador",
+    Description = "Qué tan cerca lo quieres",
+    Default = 3,
+    Min = 1,
+    Max = 10,
     Rounding = 1,
     Callback = function(Value)
-        bringSpeed = Value
+        bringDistance = Value
+    end
+})
+
+Tabs.Players:AddSlider("BringHeight", {
+    Title = "Altura relativa",
+    Description = "Ajusta la altura del jugador traído",
+    Default = 0,
+    Min = -5,
+    Max = 5,
+    Rounding = 1,
+    Callback = function(Value)
+        bringHeight = Value
     end
 })
 
@@ -616,7 +636,7 @@ Tabs.Players:AddButton({
     Title = "👁️ View Player",
     Callback = function()
         if selectedPlayer and selectedPlayer.Character then
-            Workspace.CurrentCamera.CameraSubject = selectedPlayer.Character
+            Workspace.CurrentCamera.CameraSubject = selectedPlayer.Character:FindFirstChildOfClass("Humanoid")
         end
     end
 })
@@ -626,7 +646,7 @@ Tabs.Players:AddButton({
     Callback = function()
         local char = getChar()
         if char then
-            Workspace.CurrentCamera.CameraSubject = char
+            Workspace.CurrentCamera.CameraSubject = char:FindFirstChildOfClass("Humanoid")
         end
     end
 })
@@ -636,13 +656,13 @@ Tabs.Players:AddButton({
 -- ═══════════════════════════════════════
 
 Tabs.Combat:AddParagraph({
-    Title = "⚔️ Combat System",
-    Content = "Kill aura and hitbox tools"
+    Title = "⚔️ Combat System - MEJORADO",
+    Content = "Kill aura optimizado con mejor rango"
 })
 
 local KillAuraToggle = Tabs.Combat:AddToggle("KillAura", {
     Title = "💀 Kill Aura",
-    Description = "Auto hit nearby players",
+    Description = "Auto hit nearby players (30 studs)",
     Default = false,
     Callback = function(Value)
         killAuraEnabled = Value
@@ -650,7 +670,7 @@ local KillAuraToggle = Tabs.Combat:AddToggle("KillAura", {
         if Value then
             Fluent:Notify({
                 Title = "💀 Kill Aura ON",
-                Content = "Hitting players in range",
+                Content = "Attacking players in 30 studs",
                 Duration = 2
             })
             task.spawn(killAuraLoop)
@@ -667,7 +687,7 @@ local KillAuraToggle = Tabs.Combat:AddToggle("KillAura", {
 Tabs.Combat:AddSlider("KillAuraRange", {
     Title = "Kill Aura Range",
     Description = "Attack range in studs",
-    Default = 20,
+    Default = 30,
     Min = 5,
     Max = 50,
     Rounding = 0,
@@ -679,7 +699,7 @@ Tabs.Combat:AddSlider("KillAuraRange", {
 Tabs.Combat:AddSlider("KillAuraSpeed", {
     Title = "Attack Speed",
     Description = "Lower = Faster",
-    Default = 0.1,
+    Default = 0.08,
     Min = 0.05,
     Max = 1,
     Rounding = 2,
@@ -714,21 +734,36 @@ Tabs.Combat:AddButton({
 Tabs.Combat:AddSection("Hitbox Expander")
 
 local hitboxEnabled = false
-local hitboxSize = 10
+local hitboxSize = 15
 
 Tabs.Combat:AddToggle("HitboxToggle", {
     Title = "📦 Hitbox Expander",
+    Description = "Aumenta la hitbox de los jugadores",
     Default = false,
     Callback = function(Value)
         hitboxEnabled = Value
+        
+        if Value then
+            Fluent:Notify({
+                Title = "📦 Hitbox ON",
+                Content = "Hitboxes expandidas",
+                Duration = 2
+            })
+        else
+            Fluent:Notify({
+                Title = "Hitbox OFF",
+                Content = "",
+                Duration = 2
+            })
+        end
     end
 })
 
 Tabs.Combat:AddSlider("HitboxSize", {
     Title = "Hitbox Size",
-    Default = 10,
+    Default = 15,
     Min = 5,
-    Max = 25,
+    Max = 30,
     Rounding = 0,
     Callback = function(Value)
         hitboxSize = Value
@@ -810,8 +845,8 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 Tabs.Settings:AddSection("Info")
 
 Tabs.Settings:AddParagraph({
-    Title = "👤 GF HUB v4.0",
-    Content = "Created by: Gael Fonzar\nTheme: Dark + Red\nStatus: ✅ Loaded"
+    Title = "👤 GF HUB v4.1",
+    Content = "Created by: Gael Fonzar\nTheme: Dark + Red\nStatus: ✅ MEJORADO\n\nMejoras:\n• Bring pegado mejorado\n• Hitbox aumentada\n• Errores corregidos"
 })
 
 -- ═══════════════════════════════════════
@@ -874,11 +909,13 @@ connections.Hitbox = RunService.Heartbeat:Connect(function()
                         hitboxCache[target.Name] = {
                             size = targetRoot.Size,
                             trans = targetRoot.Transparency,
-                            cancol = targetRoot.CanCollide
+                            cancol = targetRoot.CanCollide,
+                            material = targetRoot.Material
                         }
                     end
                     targetRoot.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
                     targetRoot.Transparency = 0.7
+                    targetRoot.Material = Enum.Material.Neon
                     targetRoot.Color = Color3.fromRGB(255, 0, 0)
                     targetRoot.CanCollide = false
                 else
@@ -886,6 +923,7 @@ connections.Hitbox = RunService.Heartbeat:Connect(function()
                         targetRoot.Size = hitboxCache[target.Name].size
                         targetRoot.Transparency = hitboxCache[target.Name].trans
                         targetRoot.CanCollide = hitboxCache[target.Name].cancol
+                        targetRoot.Material = hitboxCache[target.Name].material
                         hitboxCache[target.Name] = nil
                     end
                 end
@@ -909,6 +947,9 @@ end)
 
 Players.PlayerRemoving:Connect(function(removedPlayer)
     removeESP(removedPlayer)
+    if hitboxCache[removedPlayer.Name] then
+        hitboxCache[removedPlayer.Name] = nil
+    end
     PlayerDropdown:SetValues(getPlayerList())
 end)
 
@@ -925,10 +966,17 @@ player.CharacterAdded:Connect(function(char)
     
     if bringEnabled then
         stopBringLoop()
+        BringLoopToggle:SetValue(false)
     end
     
     if killAuraEnabled then
         killAuraEnabled = false
+        KillAuraToggle:SetValue(false)
+    end
+    
+    if flyEnabled then
+        flyEnabled = false
+        FlyToggle:SetValue(false)
     end
 end)
 
@@ -939,7 +987,9 @@ local function cleanup()
     
     for name, connection in pairs(connections) do
         if connection then
-            connection:Disconnect()
+            pcall(function()
+                connection:Disconnect()
+            end)
         end
     end
     
@@ -964,17 +1014,24 @@ local function cleanup()
         if root then
             if root:FindFirstChild("GF_Fly") then root.GF_Fly:Destroy() end
             if root:FindFirstChild("GF_Gyro") then root.GF_Gyro:Destroy() end
-            root.Velocity = Vector3.new(0, 0, 0)
+            root.Velocity = Vector3.zero
         end
     end
     
     for _, target in pairs(Players:GetPlayers()) do
         if target ~= player and target.Character then
             local targetRoot = target.Character:FindFirstChild("HumanoidRootPart")
+            local targetHum = target.Character:FindFirstChildOfClass("Humanoid")
+            
             if targetRoot and hitboxCache[target.Name] then
                 targetRoot.Size = hitboxCache[target.Name].size
                 targetRoot.Transparency = hitboxCache[target.Name].trans
                 targetRoot.CanCollide = hitboxCache[target.Name].cancol
+                targetRoot.Material = hitboxCache[target.Name].material
+            end
+            
+            if targetHum then
+                targetHum.PlatformStand = false
             end
         end
     end
@@ -998,20 +1055,20 @@ SaveManager:LoadAutoloadConfig()
 
 -- Final notification
 Fluent:Notify({
-    Title = "🎮 GF HUB v4.0",
-    Content = "Dark Theme Edition\nPress RightShift to toggle",
+    Title = "🎮 GF HUB v4.1",
+    Content = "Dark Theme - MEJORADO\nPress RightShift to toggle",
     Duration = 4
 })
 
 print("════════════════════════════════")
-print("🎮 GF HUB v4.0 - Dark Theme")
+print("🎮 GF HUB v4.1 - Dark Theme MEJORADO")
 print("Created by: Gael Fonzar")
 print("Theme: Black + Red Accent")
 print("Features:")
-print("• Bring Player to You")
-print("• Kill Aura System")
-print("• One-Hit Kill")
-print("• Hitbox Expander")
+print("• Bring Player PEGADO (Mejorado)")
+print("• Kill Aura System (30 studs)")
+print("• Hitbox Expander (15 studs)")
 print("• ESP System")
+print("• Errores corregidos")
 print("Press RightShift to open")
 print("════════════════════════════════")
