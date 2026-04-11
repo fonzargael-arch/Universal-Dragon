@@ -1,7 +1,7 @@
 --[[
-    🐉 GF HUB v5.0
+    🐉 GF HUB v5.0 MOBILE FIXED
     by Gael Fonzar
-    No Library - RGB Borders - Optimized
+    No Library - RGB Borders - Mobile Optimized
 ]]
 
 local Players = game:GetService("Players")
@@ -9,11 +9,11 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
-local MarketplaceService = game:GetService("MarketplaceService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- ============ ESTADOS ============
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
 local S = {
     walkSpeed = 16, flySpeed = 100, jumpPower = 50,
     fly = false, noclip = false, infJump = false,
@@ -34,7 +34,6 @@ local hitboxCache, espObjects = {}, {}
 local origLighting = {}
 local conns = {}
 
--- ============ HELPERS ============
 local function getChar() return player.Character end
 local function getHum() local c=getChar() return c and c:FindFirstChildOfClass("Humanoid") end
 local function getHRP() local c=getChar() return c and c:FindFirstChild("HumanoidRootPart") end
@@ -57,8 +56,8 @@ local function notify(txt, dur)
     ng.ResetOnSpawn = false
     ng.Parent = player.PlayerGui
     local f = Instance.new("Frame", ng)
-    f.Size = UDim2.new(0,280,0,50)
-    f.Position = UDim2.new(1,-300,1,-70)
+    f.Size = UDim2.new(0,280,0,55)
+    f.Position = UDim2.new(0.5,-140,1,-80)
     f.BackgroundColor3 = Color3.fromRGB(10,10,10)
     f.BorderSizePixel = 0
     Instance.new("UICorner",f).CornerRadius = UDim.new(0,10)
@@ -71,7 +70,7 @@ local function notify(txt, dur)
     l.Text = txt
     l.TextColor3 = Color3.new(1,1,1)
     l.Font = Enum.Font.GothamBold
-    l.TextSize = 13
+    l.TextSize = 14
     f.BackgroundTransparency = 1
     TweenService:Create(f, TweenInfo.new(0.3), {BackgroundTransparency=0}):Play()
     task.delay(dur or 2, function()
@@ -81,7 +80,6 @@ local function notify(txt, dur)
     end)
 end
 
--- ============ MOVIMIENTO ============
 local function startFly()
     local hrp = getHRP() if not hrp then return end
     local hum = getHum() if hum then hum.PlatformStand = true end
@@ -104,7 +102,6 @@ local function stopFly()
     local hum = getHum() if hum then hum.PlatformStand = false end
 end
 
--- ============ ESP ============
 local function createESP(target)
     if not target or not target.Character then return end
     if espObjects[target.Name] then
@@ -120,14 +117,12 @@ local function createESP(target)
     hl.OutlineColor = Color3.fromRGB(255,255,255)
     hl.FillTransparency = 0.5
     hl.Parent = target.Character
-
     local head = target.Character:FindFirstChild("Head")
     if not head then return end
     local bb = Instance.new("BillboardGui")
     bb.Name = "GF_BB" bb.Size = UDim2.new(0,180,0,50)
     bb.StudsOffset = Vector3.new(0,3,0)
     bb.AlwaysOnTop = true bb.Parent = head
-
     local nl = Instance.new("TextLabel",bb)
     nl.Size = UDim2.new(1,0,0.5,0)
     nl.BackgroundTransparency = 1
@@ -135,7 +130,6 @@ local function createESP(target)
     nl.TextColor3 = Color3.new(1,1,1)
     nl.TextStrokeTransparency = 0
     nl.Font = Enum.Font.GothamBold nl.TextSize = 13
-
     local hl2 = Instance.new("TextLabel",bb)
     hl2.Name = "GF_HL"
     hl2.Size = UDim2.new(1,0,0.5,0)
@@ -145,7 +139,6 @@ local function createESP(target)
     hl2.TextColor3 = Color3.fromRGB(0,255,0)
     hl2.TextStrokeTransparency = 0
     hl2.Font = Enum.Font.Gotham hl2.TextSize = 11
-
     espObjects[target.Name] = {hl=hl, bb=bb, infoLbl=hl2}
 end
 
@@ -159,8 +152,6 @@ local function removeESP(target)
     end
 end
 
--- ============ LOOPS ============
--- Fly loop
 conns.fly = RunService.Heartbeat:Connect(function()
     if not S.fly then return end
     local hrp = getHRP() if not hrp then return end
@@ -179,7 +170,6 @@ conns.fly = RunService.Heartbeat:Connect(function()
     bg.CFrame = cf
 end)
 
--- Noclip loop
 conns.noclip = RunService.Stepped:Connect(function()
     if not S.noclip then return end
     local c = getChar() if not c then return end
@@ -188,14 +178,12 @@ conns.noclip = RunService.Stepped:Connect(function()
     end
 end)
 
--- Speed loop
 conns.speed = RunService.Heartbeat:Connect(function()
     local hum = getHum() if not hum then return end
     hum.WalkSpeed = S.walkSpeed
     hum.JumpPower = S.jumpPower
 end)
 
--- Protecciones loop
 conns.prot = RunService.Heartbeat:Connect(function()
     local hrp = getHRP()
     if hrp then
@@ -236,14 +224,12 @@ conns.prot = RunService.Heartbeat:Connect(function()
     end
 end)
 
--- Infinite Jump
 conns.infJump = UserInputService.JumpRequest:Connect(function()
     if not S.infJump then return end
     local hum = getHum()
     if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
 end)
 
--- Bring loop
 conns.bring = RunService.Heartbeat:Connect(function()
     if not S.bring or not S.selectedPlayer then return end
     local myHRP = getHRP() if not myHRP then return end
@@ -255,7 +241,6 @@ conns.bring = RunService.Heartbeat:Connect(function()
     tHRP.AssemblyLinearVelocity = Vector3.zero
 end)
 
--- Kill Aura loop
 task.spawn(function()
     while true do
         if S.killAura then
@@ -285,7 +270,6 @@ task.spawn(function()
     end
 end)
 
--- Hitbox loop
 conns.hitbox = RunService.Heartbeat:Connect(function()
     for _, target in ipairs(Players:GetPlayers()) do
         if target ~= player and target.Character then
@@ -310,7 +294,6 @@ conns.hitbox = RunService.Heartbeat:Connect(function()
     end
 end)
 
--- ESP update loop
 task.spawn(function()
     while true do
         if S.esp then
@@ -347,7 +330,6 @@ task.spawn(function()
     end
 end)
 
--- Mantener al respawn
 player.CharacterAdded:Connect(function(char)
     task.wait(0.5)
     S.fly = false S.bring = false S.killAura = false
@@ -359,7 +341,6 @@ player.CharacterAdded:Connect(function(char)
     end
 end)
 
--- Player events
 Players.PlayerAdded:Connect(function(p)
     task.wait(1)
     if S.esp then createESP(p) end
@@ -370,27 +351,29 @@ Players.PlayerRemoving:Connect(function(p)
 end)
 
 -- ============ GUI ============
-local gui = Instance.new("ScreenGui")
-gui.Name = "GFHUB"
-gui.ResetOnSpawn = false
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = player.PlayerGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GFHUB"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.IgnoreGuiInset = true
+screenGui.Parent = player.PlayerGui
 
--- RGB Border logic
+local guiW = isMobile and UDim2.new(0.92,0,0,520) or UDim2.new(0,360,0,520)
+local guiPos = isMobile and UDim2.new(0.04,0,0.5,-260) or UDim2.new(0,20,0.5,-260)
+
 local rgbHue = 0
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0,360,0,540)
-main.Position = UDim2.new(0,20,0.5,-270)
+main.Size = guiW
+main.Position = guiPos
 main.BackgroundColor3 = Color3.fromRGB(8,8,8)
 main.BorderSizePixel = 0
 main.ClipsDescendants = true
-main.Parent = gui
+main.Parent = screenGui
 Instance.new("UICorner",main).CornerRadius = UDim.new(0,16)
 
 local rgbStroke = Instance.new("UIStroke",main)
 rgbStroke.Thickness = 2
 
--- RGB loop
 task.spawn(function()
     while main and main.Parent do
         rgbHue = (rgbHue + 0.003) % 1
@@ -399,9 +382,8 @@ task.spawn(function()
     end
 end)
 
--- Header
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1,0,0,52)
+header.Size = UDim2.new(1,0,0,56)
 header.BackgroundColor3 = Color3.fromRGB(15,15,15)
 header.BorderSizePixel = 0
 header.Parent = main
@@ -413,16 +395,15 @@ hFix.BackgroundColor3 = Color3.fromRGB(15,15,15)
 hFix.BorderSizePixel = 0
 
 local titleLbl = Instance.new("TextLabel",header)
-titleLbl.Size = UDim2.new(1,-110,1,0)
+titleLbl.Size = UDim2.new(1,-120,1,0)
 titleLbl.Position = UDim2.new(0,14,0,0)
 titleLbl.BackgroundTransparency = 1
 titleLbl.Text = "🐉 GF HUB v5.0"
 titleLbl.TextColor3 = Color3.new(1,1,1)
 titleLbl.Font = Enum.Font.GothamBold
-titleLbl.TextSize = 16
+titleLbl.TextSize = 17
 titleLbl.TextXAlignment = Enum.TextXAlignment.Left
 
--- RGB title
 task.spawn(function()
     local h = 0
     while titleLbl and titleLbl.Parent do
@@ -433,32 +414,32 @@ task.spawn(function()
 end)
 
 local minimizado = false
+
 local btnMin = Instance.new("TextButton",header)
-btnMin.Size = UDim2.new(0,30,0,30)
-btnMin.Position = UDim2.new(1,-76,0.5,-15)
+btnMin.Size = UDim2.new(0,38,0,38)
+btnMin.Position = UDim2.new(1,-84,0.5,-19)
 btnMin.BackgroundColor3 = Color3.fromRGB(234,179,8)
 btnMin.BorderSizePixel = 0
 btnMin.Text = "—"
 btnMin.TextColor3 = Color3.fromRGB(0,0,0)
 btnMin.Font = Enum.Font.GothamBold
-btnMin.TextSize = 15
-Instance.new("UICorner",btnMin).CornerRadius = UDim.new(0,8)
+btnMin.TextSize = 18
+Instance.new("UICorner",btnMin).CornerRadius = UDim.new(0,10)
 
 local btnClose = Instance.new("TextButton",header)
-btnClose.Size = UDim2.new(0,30,0,30)
-btnClose.Position = UDim2.new(1,-40,0.5,-15)
+btnClose.Size = UDim2.new(0,38,0,38)
+btnClose.Position = UDim2.new(1,-42,0.5,-19)
 btnClose.BackgroundColor3 = Color3.fromRGB(220,38,38)
 btnClose.BorderSizePixel = 0
 btnClose.Text = "✕"
 btnClose.TextColor3 = Color3.new(1,1,1)
 btnClose.Font = Enum.Font.GothamBold
-btnClose.TextSize = 14
-Instance.new("UICorner",btnClose).CornerRadius = UDim.new(0,8)
+btnClose.TextSize = 16
+Instance.new("UICorner",btnClose).CornerRadius = UDim.new(0,10)
 
--- Tab bar
 local tabBar = Instance.new("Frame",main)
-tabBar.Size = UDim2.new(1,0,0,36)
-tabBar.Position = UDim2.new(0,0,0,52)
+tabBar.Size = UDim2.new(1,0,0,40)
+tabBar.Position = UDim2.new(0,0,0,56)
 tabBar.BackgroundColor3 = Color3.fromRGB(12,12,12)
 tabBar.BorderSizePixel = 0
 local tbLayout = Instance.new("UIListLayout",tabBar)
@@ -466,13 +447,12 @@ tbLayout.FillDirection = Enum.FillDirection.Horizontal
 tbLayout.Padding = UDim.new(0,2)
 tbLayout.SortOrder = Enum.SortOrder.LayoutOrder
 local tbPad = Instance.new("UIPadding",tabBar)
-tbPad.PaddingLeft = UDim.new(0,4)
+tbPad.PaddingLeft = UDim.new(0,3)
 tbPad.PaddingTop = UDim.new(0,4)
 
--- Content
 local contentFrame = Instance.new("Frame",main)
-contentFrame.Size = UDim2.new(1,0,1,-88)
-contentFrame.Position = UDim2.new(0,0,0,88)
+contentFrame.Size = UDim2.new(1,0,1,-96)
+contentFrame.Position = UDim2.new(0,0,0,96)
 contentFrame.BackgroundTransparency = 1
 
 local pages = {}
@@ -487,13 +467,13 @@ local tabDefs = {
 
 for i, def in ipairs(tabDefs) do
     local btn = Instance.new("TextButton",tabBar)
-    btn.Size = UDim2.new(0,66,0,28)
+    btn.Size = UDim2.new(0.19,-2,0,32)
     btn.BackgroundColor3 = Color3.fromRGB(20,20,20)
     btn.BorderSizePixel = 0
     btn.Text = def.n
     btn.TextColor3 = Color3.fromRGB(130,130,130)
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 10
+    btn.TextSize = isMobile and 9 or 10
     Instance.new("UICorner",btn).CornerRadius = UDim.new(0,6)
     tabBtns[i] = btn
 
@@ -501,20 +481,22 @@ for i, def in ipairs(tabDefs) do
     page.Size = UDim2.new(1,0,1,0)
     page.BackgroundTransparency = 1
     page.BorderSizePixel = 0
-    page.ScrollBarThickness = 3
+    page.ScrollBarThickness = isMobile and 4 or 3
     page.ScrollBarImageColor3 = def.c
     page.CanvasSize = UDim2.new(0,0,0,0)
     page.AutomaticCanvasSize = Enum.AutomaticSize.Y
     page.Visible = i == 1
+    page.ScrollingEnabled = true
     pages[i] = page
 
     local layout = Instance.new("UIListLayout",page)
-    layout.Padding = UDim.new(0,5)
+    layout.Padding = UDim.new(0,6)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     local pad = Instance.new("UIPadding",page)
     pad.PaddingTop = UDim.new(0,8)
     pad.PaddingLeft = UDim.new(0,8)
     pad.PaddingRight = UDim.new(0,8)
+    pad.PaddingBottom = UDim.new(0,8)
 end
 
 local function switchTab(i)
@@ -529,198 +511,226 @@ for i, btn in ipairs(tabBtns) do
 end
 switchTab(1)
 
--- UI Helpers
 local function crearToggle(page, lbl, color, cb)
+    local rowH = isMobile and 52 or 44
     local box = Instance.new("Frame",page)
-    box.Size = UDim2.new(1,0,0,44)
+    box.Size = UDim2.new(1,0,0,rowH)
     box.BackgroundColor3 = Color3.fromRGB(16,16,16)
     box.BorderSizePixel = 0
     Instance.new("UICorner",box).CornerRadius = UDim.new(0,10)
-
     local l = Instance.new("TextLabel",box)
-    l.Size = UDim2.new(1,-60,1,0)
+    l.Size = UDim2.new(1,-70,1,0)
     l.Position = UDim2.new(0,10,0,0)
     l.BackgroundTransparency = 1
     l.Text = lbl
     l.TextColor3 = Color3.new(1,1,1)
     l.Font = Enum.Font.Gotham
-    l.TextSize = 13
+    l.TextSize = isMobile and 14 or 13
     l.TextXAlignment = Enum.TextXAlignment.Left
-
+    local swW = isMobile and 52 or 40
+    local swH = isMobile and 28 or 20
     local bg = Instance.new("Frame",box)
-    bg.Size = UDim2.new(0,40,0,20)
-    bg.Position = UDim2.new(1,-50,0.5,-10)
+    bg.Size = UDim2.new(0,swW,0,swH)
+    bg.Position = UDim2.new(1,-(swW+10),0.5,-swH/2)
     bg.BackgroundColor3 = Color3.fromRGB(40,40,40)
     bg.BorderSizePixel = 0
     Instance.new("UICorner",bg).CornerRadius = UDim.new(1,0)
-
+    local knobSize = isMobile and 22 or 14
     local knob = Instance.new("Frame",bg)
-    knob.Size = UDim2.new(0,14,0,14)
-    knob.Position = UDim2.new(0,3,0.5,-7)
+    knob.Size = UDim2.new(0,knobSize,0,knobSize)
+    knob.Position = UDim2.new(0,3,0.5,-knobSize/2)
     knob.BackgroundColor3 = Color3.new(1,1,1)
     knob.BorderSizePixel = 0
     Instance.new("UICorner",knob).CornerRadius = UDim.new(1,0)
-
     local on = false
     local ti = TweenInfo.new(0.15, Enum.EasingStyle.Quart)
+    local knobOnPos = UDim2.new(0, swW-knobSize-3, 0.5, -knobSize/2)
+    local knobOffPos = UDim2.new(0, 3, 0.5, -knobSize/2)
     local clickBtn = Instance.new("TextButton",box)
     clickBtn.Size = UDim2.new(1,0,1,0)
     clickBtn.BackgroundTransparency = 1
     clickBtn.Text = ""
-
+    clickBtn.ZIndex = 5
     clickBtn.MouseButton1Click:Connect(function()
         on = not on
         TweenService:Create(bg,ti,{BackgroundColor3=on and color or Color3.fromRGB(40,40,40)}):Play()
-        TweenService:Create(knob,ti,{Position=on and UDim2.new(0,23,0.5,-7) or UDim2.new(0,3,0.5,-7)}):Play()
+        TweenService:Create(knob,ti,{Position=on and knobOnPos or knobOffPos}):Play()
         cb(on)
     end)
-
     return box, function(v)
         on = v
         bg.BackgroundColor3 = v and color or Color3.fromRGB(40,40,40)
-        knob.Position = v and UDim2.new(0,23,0.5,-7) or UDim2.new(0,3,0.5,-7)
+        knob.Position = v and knobOnPos or knobOffPos
     end
 end
 
-local function crearSlider(page, lbl, min, max, def, color, cb)
+local function crearSlider(page, lbl, minVal, maxVal, def, color, cb)
+    local rowH = isMobile and 72 or 60
     local box = Instance.new("Frame",page)
-    box.Size = UDim2.new(1,0,0,60)
+    box.Size = UDim2.new(1,0,0,rowH)
     box.BackgroundColor3 = Color3.fromRGB(16,16,16)
     box.BorderSizePixel = 0
     Instance.new("UICorner",box).CornerRadius = UDim.new(0,10)
-
     local l = Instance.new("TextLabel",box)
-    l.Size = UDim2.new(0.65,0,0,26)
+    l.Size = UDim2.new(0.6,0,0,isMobile and 32 or 26)
     l.Position = UDim2.new(0,10,0,4)
     l.BackgroundTransparency = 1
     l.Text = lbl
     l.TextColor3 = Color3.new(1,1,1)
-    l.Font = Enum.Font.Gotham l.TextSize = 13
+    l.Font = Enum.Font.Gotham
+    l.TextSize = isMobile and 14 or 13
     l.TextXAlignment = Enum.TextXAlignment.Left
-
     local vl = Instance.new("TextLabel",box)
-    vl.Size = UDim2.new(0.35,-10,0,26)
-    vl.Position = UDim2.new(0.65,0,0,4)
+    vl.Size = UDim2.new(0.4,-10,0,isMobile and 32 or 26)
+    vl.Position = UDim2.new(0.6,0,0,4)
     vl.BackgroundTransparency = 1
     vl.Text = tostring(def)
     vl.TextColor3 = color
-    vl.Font = Enum.Font.GothamBold vl.TextSize = 14
+    vl.Font = Enum.Font.GothamBold
+    vl.TextSize = isMobile and 16 or 14
     vl.TextXAlignment = Enum.TextXAlignment.Right
-
+    local slH = isMobile and 12 or 8
+    local slY = isMobile and 50 or 40
     local slBg = Instance.new("Frame",box)
-    slBg.Size = UDim2.new(1,-20,0,8)
-    slBg.Position = UDim2.new(0,10,0,40)
+    slBg.Size = UDim2.new(1,-20,0,slH)
+    slBg.Position = UDim2.new(0,10,0,slY)
     slBg.BackgroundColor3 = Color3.fromRGB(30,30,30)
     slBg.BorderSizePixel = 0
-    Instance.new("UICorner",slBg).CornerRadius = UDim.new(0,4)
-
-    local pct = (def-min)/(max-min)
+    Instance.new("UICorner",slBg).CornerRadius = UDim.new(0,6)
+    local pct = (def-minVal)/(maxVal-minVal)
     local slFill = Instance.new("Frame",slBg)
     slFill.Size = UDim2.new(pct,0,1,0)
     slFill.BackgroundColor3 = color
     slFill.BorderSizePixel = 0
-    Instance.new("UICorner",slFill).CornerRadius = UDim.new(0,4)
-
+    Instance.new("UICorner",slFill).CornerRadius = UDim.new(0,6)
+    local knobSz = isMobile and 22 or 14
     local slKnob = Instance.new("Frame",slBg)
-    slKnob.Size = UDim2.new(0,14,0,14)
+    slKnob.Size = UDim2.new(0,knobSz,0,knobSz)
     slKnob.AnchorPoint = Vector2.new(0.5,0.5)
     slKnob.Position = UDim2.new(pct,0,0.5,0)
     slKnob.BackgroundColor3 = Color3.new(1,1,1)
     slKnob.BorderSizePixel = 0
     Instance.new("UICorner",slKnob).CornerRadius = UDim.new(1,0)
-
+    -- Área táctil grande invisible
+    local touchArea = Instance.new("TextButton",box)
+    touchArea.Size = UDim2.new(1,-10,0,isMobile and 40 or 24)
+    touchArea.Position = UDim2.new(0,5,0,slY-(isMobile and 14 or 8))
+    touchArea.BackgroundTransparency = 1
+    touchArea.Text = ""
+    touchArea.ZIndex = 10
+    local function updateSlider(posX)
+        local absPos = slBg.AbsolutePosition.X
+        local absSize = slBg.AbsoluteSize.X
+        local p = math.clamp((posX-absPos)/absSize, 0, 1)
+        local v = math.floor(minVal + p*(maxVal-minVal))
+        slFill.Size = UDim2.new(p,0,1,0)
+        slKnob.Position = UDim2.new(p,0,0.5,0)
+        vl.Text = tostring(v)
+        cb(v)
+    end
     local sliding = false
     slBg.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding = true end
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then
+            sliding = true updateSlider(i.Position.X)
+        end
+    end)
+    touchArea.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.Touch then
+            sliding = true updateSlider(i.Position.X)
+        end
+    end)
+    touchArea.InputChanged:Connect(function(i)
+        if sliding and i.UserInputType == Enum.UserInputType.Touch then
+            updateSlider(i.Position.X)
+        end
+    end)
+    touchArea.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.Touch then sliding = false end
     end)
     UserInputService.InputEnded:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 then sliding = false end
     end)
     UserInputService.InputChanged:Connect(function(i)
         if sliding and i.UserInputType == Enum.UserInputType.MouseMovement then
-            local p = math.clamp((i.Position.X - slBg.AbsolutePosition.X)/slBg.AbsoluteSize.X,0,1)
-            local v = math.floor(min + p*(max-min))
-            slFill.Size = UDim2.new(p,0,1,0)
-            slKnob.Position = UDim2.new(p,0,0.5,0)
-            vl.Text = tostring(v)
-            cb(v)
+            updateSlider(i.Position.X)
         end
     end)
+    return box
 end
 
 local function crearBoton(page, lbl, color, cb)
+    local h = isMobile and 48 or 38
     local btn = Instance.new("TextButton",page)
-    btn.Size = UDim2.new(1,0,0,38)
+    btn.Size = UDim2.new(1,0,0,h)
     btn.BackgroundColor3 = color or Color3.fromRGB(25,25,25)
     btn.BorderSizePixel = 0
     btn.Text = lbl
     btn.TextColor3 = Color3.new(1,1,1)
-    btn.Font = Enum.Font.GothamBold btn.TextSize = 13
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = isMobile and 14 or 13
     Instance.new("UICorner",btn).CornerRadius = UDim.new(0,10)
     btn.MouseButton1Click:Connect(cb)
     return btn
 end
 
 local function crearDropdown(page, lbl, lista, cb)
+    local rowH = isMobile and 54 or 44
+    local itemH = isMobile and 40 or 32
     local box = Instance.new("Frame",page)
-    box.Size = UDim2.new(1,0,0,44)
+    box.Size = UDim2.new(1,0,0,rowH)
     box.BackgroundColor3 = Color3.fromRGB(16,16,16)
     box.BorderSizePixel = 0
     box.ClipsDescendants = true
     Instance.new("UICorner",box).CornerRadius = UDim.new(0,10)
-
     local l = Instance.new("TextLabel",box)
-    l.Size = UDim2.new(0.5,0,0,44)
+    l.Size = UDim2.new(0.4,0,0,rowH)
     l.Position = UDim2.new(0,10,0,0)
     l.BackgroundTransparency = 1
     l.Text = lbl
     l.TextColor3 = Color3.fromRGB(150,150,150)
-    l.Font = Enum.Font.Gotham l.TextSize = 12
+    l.Font = Enum.Font.Gotham
+    l.TextSize = isMobile and 13 or 12
     l.TextXAlignment = Enum.TextXAlignment.Left
-
     local selected = Instance.new("TextButton",box)
-    selected.Size = UDim2.new(0.5,-10,0,30)
-    selected.Position = UDim2.new(0.5,0,0.5,-15)
+    selected.Size = UDim2.new(0.6,-10,0,isMobile and 36 or 30)
+    selected.Position = UDim2.new(0.4,0,0.5,isMobile and -18 or -15)
     selected.BackgroundColor3 = Color3.fromRGB(28,28,28)
     selected.BorderSizePixel = 0
     selected.Text = lista[1] or "Ninguno"
     selected.TextColor3 = Color3.new(1,1,1)
-    selected.Font = Enum.Font.Gotham selected.TextSize = 12
+    selected.Font = Enum.Font.Gotham
+    selected.TextSize = isMobile and 13 or 12
     Instance.new("UICorner",selected).CornerRadius = UDim.new(0,6)
-
     local open = false
     local itemFrames = {}
-
     local function updateList()
         for _, f in ipairs(itemFrames) do f:Destroy() end
         itemFrames = {}
         for i, name in ipairs(lista) do
             local item = Instance.new("TextButton",box)
-            item.Size = UDim2.new(1,0,0,32)
-            item.Position = UDim2.new(0,0,0,44+(i-1)*32)
+            item.Size = UDim2.new(1,0,0,itemH)
+            item.Position = UDim2.new(0,0,0,rowH+(i-1)*itemH)
             item.BackgroundColor3 = Color3.fromRGB(22,22,22)
             item.BorderSizePixel = 0
             item.Text = name
             item.TextColor3 = Color3.new(1,1,1)
-            item.Font = Enum.Font.Gotham item.TextSize = 12
+            item.Font = Enum.Font.Gotham
+            item.TextSize = isMobile and 13 or 12
             item.MouseButton1Click:Connect(function()
                 selected.Text = name
                 open = false
-                box.Size = UDim2.new(1,0,0,44)
+                box.Size = UDim2.new(1,0,0,rowH)
                 cb(name)
             end)
             table.insert(itemFrames, item)
         end
     end
-
     updateList()
-
     selected.MouseButton1Click:Connect(function()
         open = not open
-        local newH = open and 44 + #lista * 32 or 44
-        TweenService:Create(box, TweenInfo.new(0.15), {Size=UDim2.new(1,0,0,newH)}):Play()
+        local newH = open and rowH + #lista*itemH or rowH
+        TweenService:Create(box,TweenInfo.new(0.15),{Size=UDim2.new(1,0,0,newH)}):Play()
     end)
-
     return {
         refresh = function(newLista)
             lista = newLista
@@ -733,251 +743,190 @@ end
 
 local function crearLabel(page, txt, color)
     local l = Instance.new("TextLabel",page)
-    l.Size = UDim2.new(1,0,0,20)
+    l.Size = UDim2.new(1,0,0,22)
     l.BackgroundTransparency = 1
     l.Text = txt
     l.TextColor3 = color or Color3.fromRGB(99,102,241)
-    l.Font = Enum.Font.GothamBold l.TextSize = 11
+    l.Font = Enum.Font.GothamBold
+    l.TextSize = isMobile and 12 or 11
     l.TextXAlignment = Enum.TextXAlignment.Left
     return l
 end
 
--- ============ TAB 1: MOVIMIENTO ============
+-- TAB 1
 local p1 = pages[1]
 crearLabel(p1,"  ── SPEED & JUMP ──")
-crearSlider(p1,"WalkSpeed",16,500,16,Color3.fromRGB(96,165,250),function(v)
-    S.walkSpeed = v
-end)
-crearSlider(p1,"Jump Power",50,500,50,Color3.fromRGB(192,132,252),function(v)
-    S.jumpPower = v
-end)
+crearSlider(p1,"WalkSpeed",16,500,16,Color3.fromRGB(96,165,250),function(v) S.walkSpeed=v end)
+crearSlider(p1,"Jump Power",50,500,50,Color3.fromRGB(192,132,252),function(v) S.jumpPower=v end)
 crearLabel(p1,"  ── FLY ──")
-crearSlider(p1,"Fly Speed",10,500,100,Color3.fromRGB(251,191,36),function(v)
-    S.flySpeed = v
-end)
+crearSlider(p1,"Fly Speed",10,500,100,Color3.fromRGB(251,191,36),function(v) S.flySpeed=v end)
 crearToggle(p1,"✈️ Fly",Color3.fromRGB(96,165,250),function(v)
-    S.fly = v
-    if v then startFly() else stopFly() end
+    S.fly=v if v then startFly() else stopFly() end
 end)
 crearToggle(p1,"👻 Noclip",Color3.fromRGB(192,132,252),function(v)
-    S.noclip = v
-    if not v then
-        local c = getChar() if c then
-            for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = true end
-            end
-        end
-    end
+    S.noclip=v
+    if not v then local c=getChar() if c then for _,p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide=true end end end end
 end)
-crearToggle(p1,"♾️ Infinite Jump",Color3.fromRGB(34,197,94),function(v)
-    S.infJump = v
-end)
+crearToggle(p1,"♾️ Infinite Jump",Color3.fromRGB(34,197,94),function(v) S.infJump=v end)
 crearBoton(p1,"🔄 Reset Velocidad Normal",Color3.fromRGB(25,25,25),function()
-    S.walkSpeed = 16 S.jumpPower = 50
-    notify("✅ Velocidad reseteada")
+    S.walkSpeed=16 S.jumpPower=50 notify("✅ Velocidad reseteada")
 end)
 
--- ============ TAB 2: PROTECCIÓN ============
+-- TAB 2
 local p2 = pages[2]
 crearLabel(p2,"  ── PROTECCIONES ──")
-crearToggle(p2,"🛡️ Anti Knockback",Color3.fromRGB(34,197,94),function(v) S.antiKB = v end)
-crearToggle(p2,"🎭 Anti Ragdoll",Color3.fromRGB(34,197,94),function(v) S.antiRag = v end)
+crearToggle(p2,"🛡️ Anti Knockback",Color3.fromRGB(34,197,94),function(v) S.antiKB=v end)
+crearToggle(p2,"🎭 Anti Ragdoll",Color3.fromRGB(34,197,94),function(v) S.antiRag=v end)
 crearToggle(p2,"🚫 Anti Guardias/Touch",Color3.fromRGB(34,197,94),function(v)
-    S.antiGuard = v
-    local c = getChar() if c then
-        for _, p in ipairs(c:GetDescendants()) do
-            if p:IsA("BasePart") then p.CanTouch = not v end
-        end
-    end
+    S.antiGuard=v
+    local c=getChar() if c then for _,p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then p.CanTouch=not v end end end
 end)
-crearToggle(p2,"❤️ God Mode",Color3.fromRGB(239,68,68),function(v) S.godMode = v end)
-crearToggle(p2,"🌊 Anti Tsunami/Empuje",Color3.fromRGB(96,165,250),function(v) S.antiTsunami = v end)
+crearToggle(p2,"❤️ God Mode",Color3.fromRGB(239,68,68),function(v) S.godMode=v end)
+crearToggle(p2,"🌊 Anti Tsunami/Empuje",Color3.fromRGB(96,165,250),function(v) S.antiTsunami=v end)
 crearLabel(p2,"  ── OPCIONES ──")
 crearBoton(p2,"💊 Heal Completo",Color3.fromRGB(20,80,20),function()
-    local hum = getHum()
-    if hum then hum.Health = hum.MaxHealth end
-    notify("❤️ HP restaurado")
+    local hum=getHum() if hum then hum.Health=hum.MaxHealth end notify("❤️ HP restaurado")
 end)
-crearBoton(p2,"🔄 Respawn",Color3.fromRGB(25,25,25),function()
-    player:LoadCharacter()
-end)
+crearBoton(p2,"🔄 Respawn",Color3.fromRGB(25,25,25),function() player:LoadCharacter() end)
 
--- ============ TAB 3: PLAYERS ============
+-- TAB 3
 local p3 = pages[3]
 crearLabel(p3,"  ── SELECCIONAR ──")
-
 local ddPlayers = crearDropdown(p3,"Jugador",getPlayerList(),function(name)
-    S.selectedPlayer = getPlayerByName(name)
+    S.selectedPlayer=getPlayerByName(name)
     if S.selectedPlayer then notify("✅ Seleccionado: "..name) end
 end)
-
 crearBoton(p3,"🔄 Actualizar Lista",Color3.fromRGB(25,25,25),function()
-    ddPlayers.refresh(getPlayerList())
-    notify("✅ Lista actualizada")
+    ddPlayers.refresh(getPlayerList()) notify("✅ Lista actualizada")
 end)
-
 crearLabel(p3,"  ── TELEPORT ──")
 crearBoton(p3,"📍 Teleport a Jugador",Color3.fromRGB(30,30,80),function()
-    if not S.selectedPlayer or not S.selectedPlayer.Character then
-        notify("❌ Selecciona un jugador") return
-    end
-    local tHRP = S.selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local myHRP = getHRP()
-    if tHRP and myHRP then
-        myHRP.CFrame = tHRP.CFrame * CFrame.new(0,0,3)
-        notify("✅ Teleportado a "..S.selectedPlayer.Name)
-    end
+    if not S.selectedPlayer or not S.selectedPlayer.Character then notify("❌ Selecciona un jugador") return end
+    local tHRP=S.selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local myHRP=getHRP()
+    if tHRP and myHRP then myHRP.CFrame=tHRP.CFrame*CFrame.new(0,0,3) notify("✅ Teleportado a "..S.selectedPlayer.Name) end
 end)
-
 crearBoton(p3,"📍 Teleport Jugador a Mí",Color3.fromRGB(30,30,80),function()
-    if not S.selectedPlayer or not S.selectedPlayer.Character then
-        notify("❌ Selecciona un jugador") return
-    end
-    local tHRP = S.selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local myHRP = getHRP()
-    if tHRP and myHRP then
-        tHRP.CFrame = myHRP.CFrame * CFrame.new(0,0,3)
-        notify("✅ Jugador teleportado")
-    end
+    if not S.selectedPlayer or not S.selectedPlayer.Character then notify("❌ Selecciona un jugador") return end
+    local tHRP=S.selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local myHRP=getHRP()
+    if tHRP and myHRP then tHRP.CFrame=myHRP.CFrame*CFrame.new(0,0,3) notify("✅ Jugador teleportado") end
 end)
-
 crearLabel(p3,"  ── BRING ──")
-crearSlider(p3,"Distancia Bring",1,10,3,Color3.fromRGB(251,191,36),function(v) S.bringDist = v end)
-crearSlider(p3,"Altura Bring",-5,5,0,Color3.fromRGB(251,191,36),function(v) S.bringHeight = v end)
+crearSlider(p3,"Distancia Bring",1,10,3,Color3.fromRGB(251,191,36),function(v) S.bringDist=v end)
+crearSlider(p3,"Altura Bring",-5,5,0,Color3.fromRGB(251,191,36),function(v) S.bringHeight=v end)
 crearToggle(p3,"🧲 Bring Player (Pegado)",Color3.fromRGB(251,191,36),function(v)
-    if v and not S.selectedPlayer then
-        notify("❌ Selecciona un jugador") return
-    end
-    S.bring = v
-    notify(v and "🧲 Bring activado" or "✅ Jugador liberado")
+    if v and not S.selectedPlayer then notify("❌ Selecciona un jugador") return end
+    S.bring=v notify(v and "🧲 Bring activado" or "✅ Jugador liberado")
 end)
-
 crearLabel(p3,"  ── CÁMARA ──")
 crearBoton(p3,"👁️ Espectear Jugador",Color3.fromRGB(30,30,30),function()
-    if not S.selectedPlayer or not S.selectedPlayer.Character then
-        notify("❌ Selecciona un jugador") return
-    end
-    local hum = S.selectedPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        camera.CameraSubject = hum
-        S.spectating = true
-        notify("👁️ Espectando: "..S.selectedPlayer.Name)
-    end
+    if not S.selectedPlayer or not S.selectedPlayer.Character then notify("❌ Selecciona un jugador") return end
+    local hum=S.selectedPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then camera.CameraSubject=hum S.spectating=true notify("👁️ Espectando: "..S.selectedPlayer.Name) end
 end)
 crearBoton(p3,"🔙 Volver a Mi Cámara",Color3.fromRGB(30,30,30),function()
-    local hum = getHum()
-    if hum then
-        camera.CameraSubject = hum
-        S.spectating = false
-        notify("✅ Cámara restaurada")
-    end
+    local hum=getHum() if hum then camera.CameraSubject=hum S.spectating=false notify("✅ Cámara restaurada") end
 end)
 
--- ============ TAB 4: COMBAT ============
+-- TAB 4
 local p4 = pages[4]
 crearLabel(p4,"  ── KILL AURA ──")
-crearSlider(p4,"Rango Kill Aura",5,50,15,Color3.fromRGB(239,68,68),function(v) S.killAuraRange = v end)
-crearSlider(p4,"Velocidad (menor=más rápido)",0.05,1,0.15,Color3.fromRGB(239,68,68),function(v) S.killAuraSpeed = v end)
-crearToggle(p4,"💀 Kill Aura",Color3.fromRGB(239,68,68),function(v) S.killAura = v end)
-
+crearSlider(p4,"Rango Kill Aura",5,50,15,Color3.fromRGB(239,68,68),function(v) S.killAuraRange=v end)
+crearSlider(p4,"Velocidad KA",0.05,1,0.15,Color3.fromRGB(239,68,68),function(v) S.killAuraSpeed=v end)
+crearToggle(p4,"💀 Kill Aura",Color3.fromRGB(239,68,68),function(v) S.killAura=v end)
 crearLabel(p4,"  ── HITBOX ──")
-crearSlider(p4,"Tamaño Hitbox",5,30,10,Color3.fromRGB(251,191,36),function(v) S.hitboxSize = v end)
-crearToggle(p4,"📦 Hitbox Expander",Color3.fromRGB(251,191,36),function(v) S.hitbox = v end)
-
+crearSlider(p4,"Tamaño Hitbox",5,30,10,Color3.fromRGB(251,191,36),function(v) S.hitboxSize=v end)
+crearToggle(p4,"📦 Hitbox Expander",Color3.fromRGB(251,191,36),function(v) S.hitbox=v end)
 crearLabel(p4,"  ── MANUAL ──")
 crearBoton(p4,"👊 Hit Jugador Seleccionado",Color3.fromRGB(80,20,20),function()
     if not S.selectedPlayer then notify("❌ Selecciona un jugador") return end
     pcall(function()
-        local myHRP = getHRP()
-        local tHRP = S.selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local myHRP=getHRP()
+        local tHRP=S.selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
         if myHRP and tHRP then
-            local orig = myHRP.CFrame
-            myHRP.CFrame = tHRP.CFrame * CFrame.new(0,0,2)
-            local tool = player.Character:FindFirstChildOfClass("Tool")
+            local orig=myHRP.CFrame
+            myHRP.CFrame=tHRP.CFrame*CFrame.new(0,0,2)
+            local tool=player.Character:FindFirstChildOfClass("Tool")
             if tool then tool:Activate() end
             task.wait(0.05)
-            myHRP.CFrame = orig
+            myHRP.CFrame=orig
         end
     end)
     notify("💥 Hit enviado!")
 end)
 
--- ============ TAB 5: VISUAL ============
+-- TAB 5
 local p5 = pages[5]
 crearLabel(p5,"  ── ESP ──")
 crearToggle(p5,"👁️ ESP Jugadores",Color3.fromRGB(192,132,252),function(v)
-    S.esp = v
-    if not v then
-        for _, pl in ipairs(Players:GetPlayers()) do
-            removeESP(pl)
-        end
-    end
+    S.esp=v
+    if not v then for _,pl in ipairs(Players:GetPlayers()) do removeESP(pl) end end
 end)
-crearToggle(p5,"❤️ Mostrar HP",Color3.fromRGB(239,68,68),function(v) S.showHealth = v end)
-crearToggle(p5,"📏 Mostrar Distancia",Color3.fromRGB(96,165,250),function(v) S.showDist = v end)
-
+crearToggle(p5,"❤️ Mostrar HP",Color3.fromRGB(239,68,68),function(v) S.showHealth=v end)
+crearToggle(p5,"📏 Mostrar Distancia",Color3.fromRGB(96,165,250),function(v) S.showDist=v end)
 crearLabel(p5,"  ── LIGHTING ──")
 crearToggle(p5,"💡 Fullbright",Color3.fromRGB(251,191,36),function(v)
-    S.fullbright = v
+    S.fullbright=v
     if v then
-        origLighting = {
-            Brightness=Lighting.Brightness,
-            ClockTime=Lighting.ClockTime,
-            GlobalShadows=Lighting.GlobalShadows,
-            Ambient=Lighting.Ambient
-        }
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-        Lighting.GlobalShadows = false
-        Lighting.Ambient = Color3.fromRGB(255,255,255)
+        origLighting={Brightness=Lighting.Brightness,ClockTime=Lighting.ClockTime,GlobalShadows=Lighting.GlobalShadows,Ambient=Lighting.Ambient}
+        Lighting.Brightness=2 Lighting.ClockTime=14 Lighting.GlobalShadows=false Lighting.Ambient=Color3.fromRGB(255,255,255)
     else
         if origLighting.Brightness then
-            Lighting.Brightness = origLighting.Brightness
-            Lighting.ClockTime = origLighting.ClockTime
-            Lighting.GlobalShadows = origLighting.GlobalShadows
-            Lighting.Ambient = origLighting.Ambient
+            Lighting.Brightness=origLighting.Brightness Lighting.ClockTime=origLighting.ClockTime
+            Lighting.GlobalShadows=origLighting.GlobalShadows Lighting.Ambient=origLighting.Ambient
         end
     end
 end)
-
 crearLabel(p5,"  ── MISC ──")
 crearBoton(p5,"🔍 Listar RemoteEvents (F9)",Color3.fromRGB(25,25,25),function()
-    local count = 0
-    for _, v in ipairs(game:GetDescendants()) do
-        if v:IsA("RemoteEvent") then
-            print("RE:", v.Name, v:GetFullName())
-            count = count + 1
-        end
+    local count=0
+    for _,v in ipairs(game:GetDescendants()) do
+        if v:IsA("RemoteEvent") then print("RE:",v.Name,v:GetFullName()) count=count+1 end
     end
-    notify("📡 "..count.." RemoteEvents - revisa F9")
+    notify("📡 "..count.." RemoteEvents - F9")
 end)
 crearBoton(p5,"🐉 Listar NPCs (F9)",Color3.fromRGB(25,25,25),function()
-    local count = 0
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Humanoid") and v.Parent ~= player.Character then
-            print("NPC:", v.Parent.Name, "HP:", v.Health)
-            count = count + 1
+    local count=0
+    for _,v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Humanoid") and v.Parent~=player.Character then
+            print("NPC:",v.Parent.Name,"HP:",v.Health) count=count+1
         end
     end
-    notify("🐉 "..count.." NPCs - revisa F9")
+    notify("🐉 "..count.." NPCs - F9")
 end)
 
--- ============ DRAG ============
-local dragging, dragStart, startPos
+-- ============ DRAG MOUSE + TOUCH ============
+local dragging = false
+local dragStartPos = nil
+local guiStartPos = nil
+
+local function startDrag(inputPos)
+    dragging = true
+    dragStartPos = inputPos
+    guiStartPos = main.Position
+end
+local function updateDrag(inputPos)
+    if not dragging then return end
+    local delta = inputPos - dragStartPos
+    main.Position = UDim2.new(guiStartPos.X.Scale, guiStartPos.X.Offset+delta.X, guiStartPos.Y.Scale, guiStartPos.Y.Offset+delta.Y)
+end
+local function endDrag() dragging = false end
+
 header.InputBegan:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true dragStart = i.Position startPos = main.Position
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        startDrag(Vector2.new(i.Position.X, i.Position.Y))
     end
 end)
 UserInputService.InputChanged:Connect(function(i)
-    if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
-        local d = i.Position - dragStart
-        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X,
-                                   startPos.Y.Scale, startPos.Y.Offset+d.Y)
+    if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
+        updateDrag(Vector2.new(i.Position.X, i.Position.Y))
     end
 end)
 UserInputService.InputEnded:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+        endDrag()
+    end
 end)
 
 -- ============ MINIMIZAR ============
@@ -985,37 +934,35 @@ local twI = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 btnMin.MouseButton1Click:Connect(function()
     minimizado = not minimizado
     if minimizado then
-        TweenService:Create(main,twI,{Size=UDim2.new(0,360,0,52)}):Play()
+        TweenService:Create(main,twI,{Size=UDim2.new(main.Size.X.Scale,main.Size.X.Offset,0,56)}):Play()
         btnMin.Text = "□"
     else
-        TweenService:Create(main,twI,{Size=UDim2.new(0,360,0,540)}):Play()
+        TweenService:Create(main,twI,{Size=guiW}):Play()
         btnMin.Text = "—"
     end
 end)
 
 -- ============ CERRAR ============
 btnClose.MouseButton1Click:Connect(function()
-    S.fly = false S.noclip = false S.killAura = false S.hitbox = false S.esp = false
+    S.fly=false S.noclip=false S.killAura=false S.hitbox=false S.esp=false
     stopFly()
-    local c = getChar()
+    local c=getChar()
     if c then
-        for _, p in ipairs(c:GetDescendants()) do
-            if p:IsA("BasePart") then p.CanCollide = true p.CanTouch = true end
+        for _,p in ipairs(c:GetDescendants()) do
+            if p:IsA("BasePart") then p.CanCollide=true p.CanTouch=true end
         end
-        local hum = c:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = 16 hum.JumpPower = 50 hum.PlatformStand = false end
+        local hum=c:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed=16 hum.JumpPower=50 hum.PlatformStand=false end
     end
     if origLighting.Brightness then
-        Lighting.Brightness = origLighting.Brightness
-        Lighting.ClockTime = origLighting.ClockTime
-        Lighting.GlobalShadows = origLighting.GlobalShadows
-        Lighting.Ambient = origLighting.Ambient
+        Lighting.Brightness=origLighting.Brightness Lighting.ClockTime=origLighting.ClockTime
+        Lighting.GlobalShadows=origLighting.GlobalShadows Lighting.Ambient=origLighting.Ambient
     end
-    for _, pl in ipairs(Players:GetPlayers()) do removeESP(pl) end
-    gui:Destroy()
+    for _,pl in ipairs(Players:GetPlayers()) do removeESP(pl) end
+    screenGui:Destroy()
 end)
 
--- ============ KEYBIND RightShift toggle ============
+-- ============ KEYBIND RightShift ============
 UserInputService.InputBegan:Connect(function(i, gp)
     if gp then return end
     if i.KeyCode == Enum.KeyCode.RightShift then
@@ -1023,5 +970,5 @@ UserInputService.InputBegan:Connect(function(i, gp)
     end
 end)
 
-notify("🐉 GF HUB v5.0 cargado! RightShift = toggle", 4)
-print("🐉 GF HUB v5.0 - by Gael Fonzar - No Library Edition")
+notify("🐉 GF HUB v5.0 MOBILE cargado!", 4)
+print("🐉 GF HUB v5.0 Mobile - by Gael Fonzar")
