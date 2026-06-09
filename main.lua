@@ -1,26 +1,30 @@
 --[[
 ╔════════════════════════════════════════════════════════════════════╗
-║                    🔴 GF HUB v8.0 ULTIMATE 🔴                      ║
-║              by Gael Fonzar | Sistema Modular | 2025              ║
-║         Negro/Rojo | Auto-TP | ESP por Equipos | Anti-Lag         ║
+║              🔴 GF HUB v8.0 ULTIMATE - CORREGIDO 🔴                ║
+║              by Gael Fonzar | Full Features | 2025                ║
 ╚════════════════════════════════════════════════════════════════════╝
 ]]
 
 -- ============================================================================
--- CONFIGURACIÓN INICIAL
+-- SERVICIOS
 -- ============================================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
-local CollectionService = game:GetService("CollectionService")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 -- ============================================================================
--- UTILITY FUNCTIONS
+-- FLUENT UI (VERSIÓN CORRECTA SIN ERRORES)
+-- ============================================================================
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+-- ============================================================================
+-- HELPERS
 -- ============================================================================
 local function getChar() return player.Character end
 local function getHum() local c = getChar() return c and c:FindFirstChildOfClass("Humanoid") end
@@ -30,42 +34,7 @@ local function getTargetHRP(target) local c = getTargetChar(target) return c and
 local function isSameTeam(target) return player.Team and target.Team and player.Team == target.Team end
 
 -- ============================================================================
--- MAID SYSTEM (Anti-Memory Leak)
--- ============================================================================
-local Maid = {}
-Maid.__index = Maid
-
-function Maid.new()
-    return setmetatable({_connections = {}, _instances = {}}, Maid)
-end
-
-function Maid:Add(item)
-    if typeof(item) == "RBXScriptConnection" then
-        table.insert(self._connections, item)
-    elseif typeof(item) == "Instance" then
-        table.insert(self._instances, item)
-    elseif type(item) == "function" then
-        table.insert(self._connections, {Disconnect = item})
-    end
-    return item
-end
-
-function Maid:Destroy()
-    for _, conn in ipairs(self._connections) do
-        pcall(function() conn:Disconnect() end)
-    end
-    for _, inst in ipairs(self._instances) do
-        pcall(function() inst:Destroy() end)
-    end
-    self._connections = {}
-    self._instances = {}
-end
-
-local globalMaid = Maid.new()
-local espMaid = Maid.new()
-
--- ============================================================================
--- ESTADO GLOBAL
+-- ESTADO GLOBAL (TODAS LAS FUNCIONES)
 -- ============================================================================
 local S = {
     -- Movimiento
@@ -76,12 +45,10 @@ local S = {
     noclip = false,
     infJump = false,
     
-    -- TP Automático
+    -- TP y Bring
     autoTP = false,
     autoTPInterval = 0.5,
     selectedPlayer = nil,
-    
-    -- Bring
     bring = false,
     bringDistance = 3,
     
@@ -92,12 +59,16 @@ local S = {
     antiKB = false,
     godMode = false,
     antiRagdoll = false,
+    noStun = false,
     
     -- Visual
     esp = false,
-    espMode = "Enemigos", -- "Todos", "Aliados", "Enemigos"
+    espMode = "Enemigos",
     fullbright = false,
     chams = false,
+    zoom = false,
+    zoomLevel = 50,
+    noFog = false,
     
     -- Combate
     killAura = false,
@@ -106,39 +77,27 @@ local S = {
     hitbox = false,
     hitboxSize = 10,
     silentAim = false,
+    autoClicker = false,
+    autoClickerDelay = 0.05,
+    
+    -- Utilidades
+    antiAfk = false,
+    autoFarm = false,
+    autoCollect = false,
     
     active = true,
 }
 
 -- ============================================================================
--- NOTIFICACIONES MODERNAS
+-- NOTIFICACIONES
 -- ============================================================================
-local function notify(title, msg, type)
-    type = type or "info"
-    local colors = {
-        success = Color3.fromRGB(50, 255, 100),
-        error = Color3.fromRGB(255, 50, 50),
-        info = Color3.fromRGB(220, 20, 60),
-        warning = Color3.fromRGB(255, 200, 50)
-    }
-    
-    -- Usar Fluent para notificaciones premium
+local function notify(title, msg, dur)
     Fluent:Notify({
         Title = title,
         Content = msg,
-        Duration = 3
+        Duration = dur or 3
     })
 end
-
--- ============================================================================
--- CARGA DE FLUENT UI CON TEMA PREMIUM
--- ============================================================================
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-
--- Tema personalizado Negro/Rojo
-Fluent.Theme:SetTheme("Dark")
-Fluent.Theme.AccentColor = Color3.fromRGB(220, 20, 60)
-Fluent.Theme.BackgroundColor = Color3.fromRGB(20, 20, 25)
 
 -- ============================================================================
 -- MÓDULO: INVISIBILIDAD REAL
@@ -176,17 +135,11 @@ function Invisibility:disable()
             part.CanCollide = true
         end
     end
-    
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("Accessory") and part.Handle then
-            part.Handle.Transparency = 0
-        end
-    end
     self.active = false
 end
 
 -- ============================================================================
--- MÓDULO: FLY MODERN
+-- MÓDULO: FLY
 -- ============================================================================
 local Fly = {
     connections = {},
@@ -268,76 +221,23 @@ function Fly:stop()
 end
 
 -- ============================================================================
--- MÓDULO: AUTO TP (Tepearse al jugador seleccionado automáticamente)
--- ============================================================================
-local AutoTP = {
-    active = false,
-    interval = 0.5,
-    lastTP = 0
-}
-
-function AutoTP:tick()
-    if not S.autoTP then return end
-    if not S.selectedPlayer then return end
-    
-    local now = tick()
-    if now - self.lastTP < self.interval then return end
-    self.lastTP = now
-    
-    local targetHRP = getTargetHRP(S.selectedPlayer)
-    local myHRP = getHRP()
-    
-    if targetHRP and myHRP then
-        myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 2)
-    end
-end
-
-function AutoTP:start()
-    self.active = true
-end
-
-function AutoTP:stop()
-    self.active = false
-end
-
--- ============================================================================
--- MÓDULO: HITBOX OPTIMIZADO (Anti-Lag + Menos Detectable)
+-- MÓDULO: HITBOX
 -- ============================================================================
 local Hitbox = {
     modified = {},
-    originalSizes = {},
-    originalCollide = {}
+    originalSizes = {}
 }
-
-function Hitbox:enable()
-    for _, target in ipairs(Players:GetPlayers()) do
-        if target ~= player then
-            local hrp = getTargetHRP(target)
-            if hrp and not self.modified[target] then
-                self.originalSizes[target] = hrp.Size
-                self.originalCollide[target] = hrp.CanCollide
-                self.modified[target] = true
-            end
-        end
-    end
-end
-
-function Hitbox:disable()
-    for target, _ in pairs(self.modified) do
-        local hrp = getTargetHRP(target)
-        if hrp then
-            hrp.Size = self.originalSizes[target] or Vector3.new(2, 2, 1)
-            hrp.CanCollide = self.originalCollide[target] ~= false
-        end
-    end
-    self.modified = {}
-    self.originalSizes = {}
-    self.originalCollide = {}
-end
 
 function Hitbox:update()
     if not S.hitbox then
-        self:disable()
+        for target, _ in pairs(self.modified) do
+            local hrp = getTargetHRP(target)
+            if hrp and self.originalSizes[target] then
+                hrp.Size = self.originalSizes[target]
+            end
+        end
+        self.modified = {}
+        self.originalSizes = {}
         return
     end
     
@@ -347,7 +247,6 @@ function Hitbox:update()
             if hrp then
                 if not self.modified[target] then
                     self.originalSizes[target] = hrp.Size
-                    self.originalCollide[target] = hrp.CanCollide
                     self.modified[target] = true
                 end
                 hrp.Size = Vector3.new(S.hitboxSize, S.hitboxSize, S.hitboxSize)
@@ -358,7 +257,7 @@ function Hitbox:update()
 end
 
 -- ============================================================================
--- MÓDULO: ESP POR EQUIPOS (Premium)
+-- MÓDULO: ESP POR EQUIPOS
 -- ============================================================================
 local ESP = {
     objects = {},
@@ -384,11 +283,11 @@ function ESP:getColor(target)
     if not self:shouldShow(target) then return nil end
     
     if S.espMode == "Todos" then
-        return Color3.fromRGB(220, 20, 60) -- Rojo
+        return Color3.fromRGB(220, 20, 60)
     elseif S.espMode == "Aliados" then
-        return Color3.fromRGB(50, 255, 100) -- Verde
-    else -- Enemigos
-        return Color3.fromRGB(255, 50, 50) -- Rojo claro
+        return Color3.fromRGB(50, 255, 100)
+    else
+        return Color3.fromRGB(255, 50, 50)
     end
 end
 
@@ -408,6 +307,7 @@ function ESP:create(target)
     highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
     highlight.FillTransparency = 0.6
     highlight.OutlineTransparency = 0.2
+    highlight.Parent = char
     
     local head = char:FindFirstChild("Head")
     if head then
@@ -443,7 +343,6 @@ function ESP:create(target)
             infoLabel = infoLabel
         }
     else
-        highlight.Parent = char
         self.objects[target] = {highlight = highlight}
     end
 end
@@ -523,7 +422,7 @@ function ESP:update()
 end
 
 -- ============================================================================
--- MÓDULO: KILL AURA INTELIGENTE
+-- MÓDULO: KILL AURA
 -- ============================================================================
 local KillAura = {
     lastAttack = 0,
@@ -560,12 +459,6 @@ function KillAura:attack(target)
     if tool then
         tool:Activate()
     end
-    
-    -- Método alternativo: golpear con el personaje
-    local hum = getHum()
-    if hum then
-        hum:ChangeState(Enum.HumanoidStateType.Running)
-    end
 end
 
 function KillAura:tick()
@@ -578,17 +471,59 @@ function KillAura:tick()
     if closest then
         self:attack(closest)
         self.lastAttack = now
-        self.lastTarget = closest
     end
 end
 
 -- ============================================================================
--- LOOP PRINCIPAL UNIFICADO (Anti-Lag)
+-- MÓDULO: AUTO CLICKER
+-- ============================================================================
+local AutoClicker = {
+    active = false,
+    lastClick = 0
+}
+
+function AutoClicker:tick()
+    if not S.autoClicker then return end
+    
+    local now = tick()
+    if now - self.lastClick >= S.autoClickerDelay then
+        local tool = player.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            tool:Activate()
+        end
+        self.lastClick = now
+    end
+end
+
+-- ============================================================================
+-- MÓDULO: ANTI AFK
+-- ============================================================================
+local AntiAfk = {
+    active = false,
+    connection = nil
+}
+
+function AntiAfk:start()
+    if self.connection then return end
+    self.connection = RunService.RenderStepped:Connect(function()
+        if S.antiAfk then
+            VirtualUser:ClickButton2(Vector2.new())
+        end
+    end)
+end
+
+function AntiAfk:stop()
+    if self.connection then
+        self.connection:Disconnect()
+        self.connection = nil
+    end
+end
+
+-- ============================================================================
+-- LOOP PRINCIPAL UNIFICADO
 -- ============================================================================
 task.spawn(function()
     while S.active do
-        local startTime = tick()
-        
         -- Velocidad persistente
         local hum = getHum()
         if hum then
@@ -621,6 +556,13 @@ task.spawn(function()
             end
         end
         
+        if S.noStun then
+            local hum = getHum()
+            if hum then
+                hum.Sit = false
+            end
+        end
+        
         -- Noclip
         if S.noclip then
             local char = getChar()
@@ -633,22 +575,39 @@ task.spawn(function()
             end
         end
         
-        -- Hitbox update
+        -- Zoom
+        if S.zoom then
+            camera.FieldOfView = S.zoomLevel
+        else
+            camera.FieldOfView = 70
+        end
+        
+        -- No Fog
+        if S.noFog then
+            Lighting.FogEnd = 100000
+            Lighting.FogStart = 100000
+        else
+            Lighting.FogEnd = 1000
+            Lighting.FogStart = 0
+        end
+        
+        -- Hitbox
         Hitbox:update()
         
-        -- ESP update
+        -- ESP
         ESP:update()
         
-        -- Auto TP (tepearse automáticamente al jugador seleccionado)
+        -- Auto TP
         if S.autoTP and S.selectedPlayer then
             local targetHRP = getTargetHRP(S.selectedPlayer)
             local myHRP = getHRP()
             if targetHRP and myHRP then
                 myHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 2)
             end
+            task.wait(S.autoTPInterval)
         end
         
-        -- Bring (mover jugador hacia ti)
+        -- Bring
         if S.bring and S.selectedPlayer then
             local myHRP = getHRP()
             local targetHRP = getTargetHRP(S.selectedPlayer)
@@ -662,11 +621,17 @@ task.spawn(function()
         -- Kill Aura
         KillAura:tick()
         
-        -- Control de framerate (60 FPS máximo para evitar lag)
-        local elapsed = tick() - startTime
-        if elapsed < 0.016 then -- ~60 FPS
-            task.wait(0.016 - elapsed)
+        -- Auto Clicker
+        AutoClicker:tick()
+        
+        -- Anti AFK
+        if S.antiAfk then
+            AntiAfk:start()
+        else
+            AntiAfk:stop()
         end
+        
+        task.wait(0.05)
     end
 end)
 
@@ -683,7 +648,7 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 -- ============================================================================
--- EVENTOS DE JUGADORES
+-- EVENTOS
 -- ============================================================================
 Players.PlayerAdded:Connect(function(p)
     task.wait(0.5)
@@ -698,25 +663,31 @@ player.CharacterAdded:Connect(function()
     task.wait(0.3)
     if S.realInvis then Invisibility:enable() end
     if S.fly then Fly:start() end
+    if S.infJump then
+        local hum = getHum()
+        if hum then
+            hum.UseJumpPower = true
+        end
+    end
 end)
 
 -- ============================================================================
--- FLUENT UI - INTERFAZ MODERNA NEGRO/ROJO
+-- FLUENT UI - INTERFAZ COMPLETA
 -- ============================================================================
 local Window = Fluent:CreateWindow({
     Title = "🔴 GF HUB v8.0 ULTIMATE",
-    SubTitle = "by Gael Fonzar | Sistema Anti-Lag",
-    Size = UDim2.fromOffset(600, 500),
+    SubTitle = "by Gael Fonzar | Full Features",
+    Size = UDim2.fromOffset(600, 520),
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.RightShift,
 })
 
--- Tabs
+-- TABS
 local moveTab = Window:AddTab({ Title = "⚡ Movement", Icon = "zap" })
 local combatTab = Window:AddTab({ Title = "⚔️ Combat", Icon = "sword" })
 local visualTab = Window:AddTab({ Title = "👁️ Visual", Icon = "eye" })
 local targetTab = Window:AddTab({ Title = "🎯 Target", Icon = "crosshair" })
-local settingsTab = Window:AddTab({ Title = "⚙️ Settings", Icon = "settings" })
+local utilsTab = Window:AddTab({ Title = "🛠️ Utils", Icon = "settings" })
 
 -- ========== TAB: MOVEMENT ==========
 moveTab:AddSlider("WalkSpeed", {
@@ -760,36 +731,56 @@ moveTab:AddToggle("InfJump", {
 
 -- ========== TAB: COMBAT ==========
 combatTab:AddParagraph({ Title = "⚔️ Kill Aura", Content = "Ataca automáticamente a enemigos cercanos" })
+
 combatTab:AddSlider("KARange", {
     Title = "📏 Kill Aura Range",
     Min = 5, Max = 50, Default = 15,
     Callback = function(v) S.killAuraRange = v end
 })
+
 combatTab:AddSlider("KADelay", {
     Title = "⏱️ Attack Delay (segundos)",
     Min = 0.05, Max = 1, Default = 0.2, Decimals = 2,
     Callback = function(v) S.killAuraDelay = v end
 })
+
 combatTab:AddToggle("KillAura", {
     Title = "💀 Kill Aura",
     Default = false,
     Callback = function(v) S.killAura = v end
 })
 
-combatTab:AddParagraph({ Title = "📦 Hitbox Expander", Content = "Aumenta hitbox de enemigos (menos detectable)" })
+combatTab:AddParagraph({ Title = "📦 Hitbox Expander", Content = "Aumenta hitbox de enemigos" })
+
 combatTab:AddSlider("HitboxSize", {
     Title = "Hitbox Size",
     Min = 5, Max = 30, Default = 10,
     Callback = function(v) S.hitboxSize = v end
 })
+
 combatTab:AddToggle("Hitbox", {
     Title = "🔴 Enable Hitbox Expander",
     Default = false,
     Callback = function(v) S.hitbox = v end
 })
 
+combatTab:AddParagraph({ Title = "🖱️ Auto Clicker", Content = "Click automático" })
+
+combatTab:AddSlider("AutoClickerDelay", {
+    Title = "Click Delay (segundos)",
+    Min = 0.01, Max = 0.5, Default = 0.05, Decimals = 2,
+    Callback = function(v) S.autoClickerDelay = v end
+})
+
+combatTab:AddToggle("AutoClicker", {
+    Title = "🖱️ Auto Clicker",
+    Default = false,
+    Callback = function(v) S.autoClicker = v end
+})
+
 -- ========== TAB: VISUAL ==========
 visualTab:AddParagraph({ Title = "👁️ ESP System", Content = "Detección de jugadores con colores por equipo" })
+
 visualTab:AddDropdown("ESPMode", {
     Title = "ESP Filter",
     Values = { "Enemigos", "Aliados", "Todos" },
@@ -800,6 +791,7 @@ visualTab:AddDropdown("ESPMode", {
         notify("ESP Mode", "Filtro cambiado a: " .. v)
     end
 })
+
 visualTab:AddToggle("ESP", {
     Title = "👁️ Enable ESP",
     Default = false,
@@ -814,6 +806,7 @@ visualTab:AddToggle("ESP", {
 })
 
 visualTab:AddParagraph({ Title = "🕵️ Stealth", Content = "Opciones de invisibilidad" })
+
 visualTab:AddToggle("RealInvis", {
     Title = "👤 REAL Invisibility (nadie te ve)",
     Default = false,
@@ -824,7 +817,8 @@ visualTab:AddToggle("RealInvis", {
     end
 })
 
-visualTab:AddParagraph({ Title = "💡 Lighting", Content = "Modificadores de iluminación" })
+visualTab:AddParagraph({ Title = "💡 Lighting & Camera", Content = "Modificadores visuales" })
+
 visualTab:AddToggle("Fullbright", {
     Title = "💡 Fullbright",
     Default = false,
@@ -842,7 +836,25 @@ visualTab:AddToggle("Fullbright", {
     end
 })
 
--- ========== TAB: TARGET (Auto-TP + Bring) ==========
+visualTab:AddToggle("NoFog", {
+    Title = "🌫️ No Fog",
+    Default = false,
+    Callback = function(v) S.noFog = v end
+})
+
+visualTab:AddToggle("Zoom", {
+    Title = "🔍 Zoom Hack",
+    Default = false,
+    Callback = function(v) S.zoom = v end
+})
+
+visualTab:AddSlider("ZoomLevel", {
+    Title = "Zoom Level (FOV)",
+    Min = 20, Max = 120, Default = 50,
+    Callback = function(v) S.zoomLevel = v end
+})
+
+-- ========== TAB: TARGET ==========
 local playerDropdown
 
 local function refreshPlayerList()
@@ -866,7 +878,7 @@ playerDropdown = targetTab:AddDropdown("PlayerSelect", {
         for _, p in ipairs(Players:GetPlayers()) do
             if p.Name == value then
                 S.selectedPlayer = p
-                notify("🎯 Target Set", "Ahora apuntando a: " .. p.Name, "success")
+                notify("🎯 Target Set", "Ahora apuntando a: " .. p.Name)
                 break
             end
         end
@@ -878,12 +890,14 @@ refreshPlayerList()
 Players.PlayerAdded:Connect(refreshPlayerList)
 Players.PlayerRemoving:Connect(refreshPlayerList)
 
-targetTab:AddParagraph({ Title = "🔄 Auto Teleport", Content = "Te teletransporta automáticamente al jugador seleccionado cada X segundos" })
+targetTab:AddParagraph({ Title = "🔄 Auto Teleport", Content = "Te teletransporta automáticamente al jugador seleccionado" })
+
 targetTab:AddSlider("AutoTPInterval", {
     Title = "TP Interval (segundos)",
     Min = 0.2, Max = 5, Default = 0.5, Decimals = 1,
     Callback = function(v) S.autoTPInterval = v end
 })
+
 targetTab:AddToggle("AutoTP", {
     Title = "📍 Auto TP to Selected Player",
     Default = false,
@@ -898,12 +912,14 @@ targetTab:AddToggle("AutoTP", {
     end
 })
 
-targetTab:AddParagraph({ Title = "🔄 Bring System", Content = "Mueve al jugador SELECCIONADO hacia TI (no al revés)" })
+targetTab:AddParagraph({ Title = "🔄 Bring System", Content = "Mueve al jugador SELECCIONADO hacia TI" })
+
 targetTab:AddSlider("BringDistance", {
     Title = "Bring Distance (studs)",
     Min = 1, Max = 15, Default = 3,
     Callback = function(v) S.bringDistance = v end
 })
+
 targetTab:AddToggle("Bring", {
     Title = "🔄 BRING (mueve jugador hacia ti)",
     Default = false,
@@ -952,26 +968,44 @@ targetTab:AddButton({
     end
 })
 
--- ========== TAB: SETTINGS ==========
-settingsTab:AddParagraph({ Title = "🛡️ Protections", Content = "Defensas pasivas" })
-settingsTab:AddToggle("AntiKB", {
+-- ========== TAB: UTILS ==========
+utilsTab:AddParagraph({ Title = "🛡️ Protections", Content = "Defensas pasivas" })
+
+utilsTab:AddToggle("AntiKB", {
     Title = "🛡️ Anti Knockback",
     Default = false,
     Callback = function(v) S.antiKB = v end
 })
-settingsTab:AddToggle("AntiRagdoll", {
+
+utilsTab:AddToggle("AntiRagdoll", {
     Title = "🎭 Anti Ragdoll",
     Default = false,
     Callback = function(v) S.antiRagdoll = v end
 })
-settingsTab:AddToggle("GodMode", {
+
+utilsTab:AddToggle("NoStun", {
+    Title = "⚡ No Stun / Anti Sit",
+    Default = false,
+    Callback = function(v) S.noStun = v end
+})
+
+utilsTab:AddToggle("GodMode", {
     Title = "❤️ God Mode (Infinite Health)",
     Default = false,
     Callback = function(v) S.godMode = v end
 })
 
-settingsTab:AddParagraph({ Title = "💊 Utilities", Content = "Acciones rápidas" })
-settingsTab:AddButton({
+utilsTab:AddParagraph({ Title = "💤 Anti AFK", Content = "Evita ser kickeado por inactividad" })
+
+utilsTab:AddToggle("AntiAFK", {
+    Title = "🟢 Anti AFK",
+    Default = false,
+    Callback = function(v) S.antiAfk = v end
+})
+
+utilsTab:AddParagraph({ Title = "💊 Utilities", Content = "Acciones rápidas" })
+
+utilsTab:AddButton({
     Title = "💊 Full Heal",
     Callback = function()
         local hum = getHum()
@@ -979,7 +1013,8 @@ settingsTab:AddButton({
         notify("💊 Healed", "Vida restaurada al máximo")
     end
 })
-settingsTab:AddButton({
+
+utilsTab:AddButton({
     Title = "🔄 Respawn",
     Callback = function()
         player:LoadCharacter()
@@ -987,13 +1022,29 @@ settingsTab:AddButton({
     end
 })
 
+utilsTab:AddButton({
+    Title = "🧹 Clear Chat",
+    Callback = function()
+        for i = 1, 100 do
+            game:GetService("Chat"):Chat(player.Character, string.rep(" ", 200))
+        end
+        notify("🧹 Chat Cleared", "Mensajes eliminados")
+    end
+})
+
+utilsTab:AddParagraph({ Title = "📋 Player Info", Content = "Información del servidor" })
+
+utilsTab:AddButton({
+    Title = "📊 Server Info",
+    Callback = function()
+        local count = #Players:GetPlayers()
+        local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
+        notify("📊 Server Info", string.format("Jugadores: %d | Ping: %s", count, ping))
+    end
+})
+
 -- ============================================================================
 -- INICIALIZACIÓN
 -- ============================================================================
-notify("🔴 GF HUB v8.0 ULTIMATE", "Cargado exitosamente | RShift para minimizar", "success")
+notify("🔴 GF HUB v8.0 ULTIMATE", "Cargado exitosamente | RShift para minimizar")
 refreshPlayerList()
-
--- Limpiar al salir
-globalMaid:Add(game:GetService("Players").LocalPlayer.CharacterAdded:Connect(function()
-    -- Reconectar automáticamente
-end))
